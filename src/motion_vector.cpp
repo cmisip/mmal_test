@@ -11,11 +11,14 @@ int main(int argc, char **argv) {
         return 1;
     }
     
+    
+    //CREATE CAMERAS here
     ffmpeg_camera camera1(1,argv[1]);
     
-    //CHOICES
     
-    //MMAL_COMPONENT_DEFAULT_VIDEO_ENCODER 
+    
+    //CREATE COMPONENTS HERE
+    //mmal_engine encoder(MMAL_COMPONENT_DEFAULT_VIDEO_ENCODER) 
     //mmal_engine encoder("vc.ril.video_encode");
     
     //H264 encoder
@@ -28,6 +31,7 @@ int main(int argc, char **argv) {
     
     //JPEG encoder
     mmal_engine jcoder(MMAL_COMPONENT_DEFAULT_IMAGE_ENCODER);
+
     jcoder.set_input_port(640,360,MMAL_ENCODING_I420);
     jcoder.set_output_port(640,360,MMAL_ENCODING_JPEG);
     
@@ -57,6 +61,8 @@ int main(int argc, char **argv) {
       //Pass cframe to components here
       encoder.run(&cframe);
       jcoder.run(&cframe);
+      
+      
       n = read(0, &c, 1);
         if (n > 0) break;
     }
