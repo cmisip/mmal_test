@@ -62,8 +62,7 @@ uint8_t mmal_engine::set_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOUR
     /* Set format of video engine input port */
    MMAL_ES_FORMAT_T *format_in = engine->input[0]->format;
    format_in->type = MMAL_ES_TYPE_VIDEO;
-   format_in->encoding = MMAL_ENCODING_I420;
-   //format_in->encoding = iformat;
+   format_in->encoding = iformat;
    
    width=iwidth;
    height=iheight;
@@ -86,7 +85,7 @@ uint8_t mmal_engine::set_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOUR
 
    
    /* Display the port format */
-   
+   fprintf(stderr,"---------------------------------------------------\n");
    fprintf(stderr, "INPUT %s\n", engine->input[0]->name);
    fprintf(stderr, " type: %i, fourcc: %4.4s\n", format_in->type, (char *)&format_in->encoding);
    fprintf(stderr, " bitrate: %i, framed: %i\n", format_in->bitrate,
@@ -143,7 +142,7 @@ uint8_t mmal_engine::set_output_port(uint16_t owidth, uint16_t oheight, MMAL_FOU
    CHECK_STATUS(status, "failed to commit output format");   
 
     /* Display the port format */
-   
+   fprintf(stderr,"---------------------------------------------------\n");
    fprintf(stderr, "OUTPUT %s\n", engine->output[0]->name);
    fprintf(stderr, " type: %i, fourcc: %4.4s\n", format_out->type, (char *)&format_out->encoding);
    fprintf(stderr, " bitrate: %i, framed: %i\n", format_out->bitrate,
@@ -166,6 +165,20 @@ uint8_t mmal_engine::set_output_port(uint16_t owidth, uint16_t oheight, MMAL_FOU
    
            	
 };	
+
+
+uint8_t mmal_engine::set_input_flag(uint32_t name) {
+   status = mmal_port_parameter_set_boolean(engine->input[0], name, 1);
+   CHECK_STATUS(status, "failed to set input port flag");	
+     
+};
+
+
+uint8_t mmal_engine::set_output_flag(uint32_t name) {
+   status = mmal_port_parameter_set_boolean(engine->output[0], name, 1);
+      CHECK_STATUS(status, "failed to set input port flag");	
+    
+};
 	
 uint8_t mmal_engine::enable() {
    
@@ -184,13 +197,13 @@ uint8_t mmal_engine::enable() {
    
    buffsize=av_image_get_buffer_size(AV_PIX_FMT_YUV420P, width, height, 1);
     
-   fprintf(stderr, "Bufsize is %d", buffsize);
+   //fprintf(stderr, "Bufsize is %d", buffsize);
 
    
 	
 }		
 	
-uint8_t mmal_engine::run(AVFrame **frame){
+uint8_t mmal_engine::run(AVFrame **frame, uint8_t** outbuf, uint32_t outbuf_size){
 	MMAL_BUFFER_HEADER_T *buffer;
 	if ((buffer = mmal_queue_get(pool_in->queue)) != NULL)
       {
@@ -211,8 +224,10 @@ uint8_t mmal_engine::run(AVFrame **frame){
      
       while ((buffer = mmal_queue_get(context.queue)) != NULL)
       {
-         
-         fprintf(stderr, "%s receiving <<<<< frame\n", engine->output[0]->name);
+         mmal_buffer_header_mem_lock(buffer);
+         fprintf(stderr, "%s receiving %d bytes <<<<< frame\n", engine->output[0]->name, buffer->length);
+         //memcpy(outbuf,buffer->data,outbuf_size);
+         mmal_buffer_header_mem_unlock(buffer); 
          mmal_buffer_header_release(buffer);
       }
 
