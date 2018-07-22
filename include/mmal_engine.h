@@ -40,6 +40,8 @@ public:
 	uint8_t run(AVFrame **frame, Buffer *outbuffer);
 	~mmal_engine();
 
+    MMAL_PORT_T *input=this->input;
+    MMAL_PORT_T *output=this->output; 
 
 private:
 

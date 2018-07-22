@@ -14,6 +14,8 @@ int main(int argc, char **argv) {
     }
     
     
+    fprintf(stderr, "SUCCESS %d \n", MMAL_SUCCESS);
+    
     //CREATE CAMERAS here
     ffmpeg_camera camera1(1,argv[1]);
     

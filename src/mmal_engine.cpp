@@ -114,7 +114,7 @@ uint8_t mmal_engine::set_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOUR
    
    
    
-  
+   return status;
 	
 	
 };
@@ -162,7 +162,7 @@ uint8_t mmal_engine::set_output_port(uint16_t owidth, uint16_t oheight, MMAL_FOU
    pool_out = mmal_pool_create(engine->output[0]->buffer_num,
                                engine->output[0]->buffer_size);
    
-   
+   return status;
    
            	
 };	
@@ -171,14 +171,14 @@ uint8_t mmal_engine::set_output_port(uint16_t owidth, uint16_t oheight, MMAL_FOU
 uint8_t mmal_engine::set_input_flag(uint32_t name) {
    status = mmal_port_parameter_set_boolean(engine->input[0], name, 1);
    CHECK_STATUS(status, "failed to set input port flag");	
-     
+   return status;  
 };
 
 
 uint8_t mmal_engine::set_output_flag(uint32_t name) {
    status = mmal_port_parameter_set_boolean(engine->output[0], name, 1);
       CHECK_STATUS(status, "failed to set input port flag");	
-    
+   return status; 
 };
 
 
@@ -203,7 +203,7 @@ uint8_t mmal_engine::enable() {
     
    fprintf(stderr, "Constructing mmal engine %s ******************\n", engine->output[0]->name);
 
-   
+   return status;
 	
 }		
 	
@@ -250,7 +250,7 @@ uint8_t mmal_engine::run(AVFrame **frame, Buffer *outbuf)
          status = mmal_port_send_buffer(engine->output[0], buffer);
          CHECK_STATUS(status, "failed to send buffer");
       }
-         
+     return status;    
 }	
 
 

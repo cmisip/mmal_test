@@ -8,7 +8,7 @@ IFLAGS = -I/opt/vc/include -I/opt/vc/include/interface
 LFLAGS = -L/opt/vc/lib
 
 LIBAVFLAGS = -lavutil -lavformat -lavcodec
-LIBMMALFLAGS = -lmmal -lbcm_host -lmmal_core -lmmal_components -lmmal_util -lvcos
+LIBMMALFLAGS = -lmmal -lbcm_host -lmmal_core -lmmal_components -lmmal_util -lvcos 
 
 LDFLAGS =  $(LIBAVFLAGS) $(LIBMMALFLAGS)
 
@@ -23,7 +23,7 @@ _DEPS = ffmpeg_camera.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
 
-_OBJ = motion_vector.o ffmpeg_camera.o mmal_engine.o buffer.o
+_OBJ = motion_vector.o ffmpeg_camera.o mmal_engine.o buffer.o connection.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
@@ -39,4 +39,4 @@ motion: $(OBJ)
 
 .PHONY: clean
 clean:
-	rm -f  $(ODIR)/*.o *~ motion_vector 
+	rm -f  $(ODIR)/*.o *~ motion_vector include/*.gch
