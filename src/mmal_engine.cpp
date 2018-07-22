@@ -140,6 +140,7 @@ uint8_t mmal_engine::set_output_port(uint16_t owidth, uint16_t oheight, MMAL_FOU
 
    status = mmal_port_format_commit(engine->output[0]);
    CHECK_STATUS(status, "failed to commit output format");   
+   
 
     /* Display the port format */
    fprintf(stderr,"---------------------------------------------------\n");
@@ -179,6 +180,9 @@ uint8_t mmal_engine::set_output_flag(uint32_t name) {
       CHECK_STATUS(status, "failed to set input port flag");	
     
 };
+
+
+
 	
 uint8_t mmal_engine::enable() {
    
@@ -197,13 +201,14 @@ uint8_t mmal_engine::enable() {
    
    buffsize=av_image_get_buffer_size(AV_PIX_FMT_YUV420P, width, height, 1);
     
-   //fprintf(stderr, "Bufsize is %d", buffsize);
+   fprintf(stderr, "Constructing mmal engine %s ******************\n", engine->output[0]->name);
 
    
 	
 }		
 	
-uint8_t mmal_engine::run(AVFrame **frame, uint8_t** outbuf, uint32_t outbuf_size){
+uint8_t mmal_engine::run(AVFrame **frame, Buffer *outbuf)
+{
 	MMAL_BUFFER_HEADER_T *buffer;
 	if ((buffer = mmal_queue_get(pool_in->queue)) != NULL)
       {
@@ -226,7 +231,15 @@ uint8_t mmal_engine::run(AVFrame **frame, uint8_t** outbuf, uint32_t outbuf_size
       {
          mmal_buffer_header_mem_lock(buffer);
          fprintf(stderr, "%s receiving %d bytes <<<<< frame\n", engine->output[0]->name, buffer->length);
-         //memcpy(outbuf,buffer->data,outbuf_size);
+         
+         memset(outbuf->data,0,outbuf->length);
+         memcpy(outbuf->data,buffer->data,buffer->length);
+         outbuf->length=buffer->length;
+         outbuf->flags=buffer->flags;
+         outbuf->cmd=buffer->cmd;
+         outbuf->pts=buffer->pts;
+         outbuf->dts=buffer->dts;
+         
          mmal_buffer_header_mem_unlock(buffer); 
          mmal_buffer_header_release(buffer);
       }
@@ -248,7 +261,7 @@ mmal_engine::mmal_engine(const char* iname):name(iname) {
 	
 mmal_engine::~mmal_engine() {
 	
-   fprintf(stderr,"Destructing mmal engine\n");
+   fprintf(stderr,"Destructing mmal engine %s\n", engine->output[0]->name);
 	
 	   /* Cleanup everything */
    if (engine)

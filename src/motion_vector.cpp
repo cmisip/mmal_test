@@ -6,6 +6,7 @@
 
 
 
+
 int main(int argc, char **argv) {
 	if (argc != 2) {
         fprintf(stderr, "Usage: %s rtsp://<user>:<pass>@url\n", argv[0]);
@@ -21,15 +22,16 @@ int main(int argc, char **argv) {
     //CREATE COMPONENTS HERE
     //mmal_engine encoder(MMAL_COMPONENT_DEFAULT_VIDEO_ENCODER) 
     //mmal_engine encoder("vc.ril.video_encode");
-    
+    //order matters: set_input_port, set_output_port, set_input_flag, set_output_flag, enable
     //H264 encoder
     mmal_engine encoder(MMAL_COMPONENT_DEFAULT_VIDEO_ENCODER);
   
-    encoder.set_input_flag(MMAL_PARAMETER_VIDEO_ENCODE_INLINE_VECTORS);
+    
     encoder.set_input_port(640,360,MMAL_ENCODING_I420);
     encoder.set_output_port(640,360,MMAL_ENCODING_H264);
-    
+    encoder.set_output_flag(MMAL_PARAMETER_VIDEO_ENCODE_INLINE_VECTORS);
     encoder.enable();
+    
     
     
     //RGB encoder
@@ -56,7 +58,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "start encoding\n");
     
     int framecount=0;
-    int max_frames=100;
+    int max_frames=500;
     char c;
     int n, tem;
     
@@ -64,19 +66,19 @@ int main(int argc, char **argv) {
     tem = fcntl(0, F_GETFL, 0);
     fcntl (0, F_SETFL, (tem | O_NDELAY));
     
-    //motion vector
-    uint32_t encoder_bufsize=((640*368)/256)*4;
-    uint8_t *encoder_output=(uint8_t *)malloc(encoder_bufsize); //((640x368)/256)*4
+    
+    //Buffer creation, make sure buffers are larger than the largest mmal buffer size expected
+    
+    //motion vector buffer
+    Buffer encoder_output(1884160);
     
  
     //rgb24 buffer
-    uint32_t rgbcoder_bufsize=((640*360)*3);
-    uint8_t *rgbcoder_output=(uint8_t *)malloc(rgbcoder_bufsize); //((640x368)/256)*4
+    Buffer rgbcoder_output((640*368)*3); //((640x368)/256)*4
     
     
     //jpeg at 50% compression
-    uint32_t jcoder_bufsize=(640*360*3)*.5;
-    uint8_t *jcoder_output=(uint8_t *)malloc(jcoder_bufsize); //(640x360x3)*.5
+    Buffer jcoder_output((640*360*3)*.5); //(640x360x3)*.5
     
     
     std::mutex m_encoder, m_jcoder, m_rgbcoder;
@@ -88,23 +90,25 @@ int main(int argc, char **argv) {
       
       //Pass cframe to components here and take the result from _output
       
-      encoder.run(&cframe,&encoder_output, encoder_bufsize);
-      //m_encoder.lock(); //lock outbuffer then read
-      
-      //m_encoder.unlock();
-      
-      
-      rgbcoder.run(&cframe,&rgbcoder_output, rgbcoder_bufsize);
-      //m_rgbcoder.lock(); //lock outbuffer then read
-      
-      //m_rgbcoder.unlock();
+      encoder.run(&cframe,&encoder_output);
+      m_encoder.lock(); //lock outbuffer then read
+      if(encoder_output.flags & MMAL_BUFFER_HEADER_FLAG_CODECSIDEINFO) {
+		 fprintf(stderr, "MOTION VECTOR!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");  
+	  }  
+      m_encoder.unlock();
       
       
+      rgbcoder.run(&cframe,&rgbcoder_output);
+      m_rgbcoder.lock(); //lock outbuffer then read
       
-      jcoder.run(&cframe,&jcoder_output, jcoder_bufsize);
-      //m_jcoder.lock();  //lock outbuffer then read
+      m_rgbcoder.unlock();
       
-      //m_jcoder.unlock();
+      
+      
+      jcoder.run(&cframe,&jcoder_output);
+      m_jcoder.lock();  //lock outbuffer then read
+      
+      m_jcoder.unlock();
       
       n = read(0, &c, 1);
         if (n > 0) break;
@@ -115,8 +119,6 @@ int main(int argc, char **argv) {
     /* End decding */
     fprintf(stderr, "end encoding\n");
      
-    free(encoder_output);
-    free(rgbcoder_output);
-    free(jcoder_output);
+    
 	
 }

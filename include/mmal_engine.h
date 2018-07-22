@@ -15,6 +15,13 @@
 
 #endif
 
+#ifndef obuffer
+#define obuffer
+
+#include "buffer.h"
+
+#endif
+
 
 
 class mmal_engine{
@@ -30,7 +37,7 @@ public:
     uint8_t enable();
 
 	mmal_engine(const char *name);
-	uint8_t run(AVFrame **frame, uint8_t **outbuffer, uint32_t outbuf_size);
+	uint8_t run(AVFrame **frame, Buffer *outbuffer);
 	~mmal_engine();
 
 
