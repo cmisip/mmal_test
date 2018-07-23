@@ -1,48 +1,10 @@
 
-////#ifndef mmal_engine
-//#define mmal_engine
-
-//#include "mmal_engine.h"
-
-//#endif
-
-//#ifndef connection
-//#define connection
-
-#include "connection.h"
-
-//#endif
-
-#include <fcntl.h>
-#include <mutex>
-
-
-//Add headers for specific applications
-
-
-
-
-
-int main(int argc, char **argv) {
-	if (argc != 2) {
-        fprintf(stderr, "Usage: %s rtsp://<user>:<pass>@url\n", argv[0]);
-        return 1;
-    }
-/*The specific application of this program can be included from a separate cpp file
-
-  Example parrallel pipeline application using libavcodec to obtain video frames from an rtsp stream
-and then sending to three components in parallel: h264 encoder, splitter (as rbg encoder ), jpeg encoder. */
-//#include "parallel_ap.cpp"    
-
-//#include "connections_create_ap.cpp"
-
-
 
     
     //CREATE CAMERAS here
     ffmpeg_camera camera1(1,argv[1]);
     
-    fprintf(stderr, "Hello");
+    
     
     //CREATE COMPONENTS HERE
     //mmal_engine encoder(MMAL_COMPONENT_DEFAULT_VIDEO_ENCODER) 
@@ -53,20 +15,21 @@ and then sending to three components in parallel: h264 encoder, splitter (as rbg
     
     //splitter
     mmal_engine splitter(MMAL_COMPONENT_DEFAULT_VIDEO_SPLITTER);
+  
     splitter.set_input_port(640,360,MMAL_ENCODING_I420);
     splitter.set_output_port(640,360,MMAL_ENCODING_I420);
     
+    splitter.enable();
+    
     //JPEG encoder
-    mmal_engine jcoder(MMAL_COMPONENT_DEFAULT_IMAGE_ENCODER);
-    jcoder.set_input_port(640,360,MMAL_ENCODING_I420);
-    jcoder.set_output_port(640,360,MMAL_ENCODING_JPEG);
+    //mmal_engine jcoder(MMAL_COMPONENT_DEFAULT_IMAGE_ENCODER);
+
+    //jcoder.set_input_port(640,360,MMAL_ENCODING_I420);
+    //jcoder.set_output_port(640,360,MMAL_ENCODING_JPEG);
+    
+    //jcoder.enable();
     
     //Connection splitter_jcoder(&splitter,&jcoder);
-    
-    //MMAL_CONNECTION_T *connection = 0;
-    //mmal_connection_create(&connection, splitter.engine->output[0], jcoder.engine->input[0], MMAL_CONNECTION_FLAG_TUNNELLING);
- 
-    fprintf(stderr, "There");
     
     //splitter_jcoder.enable();
     
@@ -92,7 +55,7 @@ and then sending to three components in parallel: h264 encoder, splitter (as rbg
     
     
     //jpeg at 50% compression
-    //Buffer jcoder_output((640*360*3)*.5); //(640x360x3)*.5
+    Buffer jcoder_output((640*360*3)*.5); //(640x360x3)*.5
     
     
     std::mutex m_jcoder;
@@ -126,9 +89,3 @@ and then sending to three components in parallel: h264 encoder, splitter (as rbg
 
 
 
-
-    
-    
- 
-	
-}

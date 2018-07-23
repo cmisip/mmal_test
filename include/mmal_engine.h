@@ -26,6 +26,7 @@
 
 class mmal_engine{
 	
+	
 public:	
     //uint8_t init(const char **name);
     uint8_t set_input_port(uint16_t width, uint16_t height, MMAL_FOURCC_T iformat);
@@ -40,15 +41,12 @@ public:
 	uint8_t run(AVFrame **frame, Buffer *outbuffer);
 	~mmal_engine();
 
-    MMAL_PORT_T *input=this->input;
-    MMAL_PORT_T *output=this->output; 
 
-private:
-
-MMAL_STATUS_T status = MMAL_EINVAL;
+    
 MMAL_COMPONENT_T *engine = NULL;
 MMAL_POOL_T *pool_in = NULL, *pool_out = NULL;
-
+MMAL_STATUS_T status = MMAL_EINVAL;
+ 
 const char * name;
 uint32_t buffsize=0;
 
@@ -58,7 +56,13 @@ struct CONTEXT_T {
 } context;
 
 uint16_t width=0;
-uint16_t height=0;
+uint16_t height=0; 
+
+private:
+
+
+
+
 
 
 

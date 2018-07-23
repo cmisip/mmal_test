@@ -1,74 +1,41 @@
 
-////#ifndef mmal_engine
-//#define mmal_engine
-
-//#include "mmal_engine.h"
-
-//#endif
-
-//#ifndef connection
-//#define connection
-
-#include "connection.h"
-
-//#endif
-
-#include <fcntl.h>
-#include <mutex>
-
-
-//Add headers for specific applications
-
-
-
-
-
-int main(int argc, char **argv) {
-	if (argc != 2) {
-        fprintf(stderr, "Usage: %s rtsp://<user>:<pass>@url\n", argv[0]);
-        return 1;
-    }
-/*The specific application of this program can be included from a separate cpp file
-
-  Example parrallel pipeline application using libavcodec to obtain video frames from an rtsp stream
-and then sending to three components in parallel: h264 encoder, splitter (as rbg encoder ), jpeg encoder. */
-//#include "parallel_ap.cpp"    
-
-//#include "connections_create_ap.cpp"
-
-
-
     
     //CREATE CAMERAS here
     ffmpeg_camera camera1(1,argv[1]);
     
-    fprintf(stderr, "Hello");
+    
     
     //CREATE COMPONENTS HERE
     //mmal_engine encoder(MMAL_COMPONENT_DEFAULT_VIDEO_ENCODER) 
     //mmal_engine encoder("vc.ril.video_encode");
     //order matters: set_input_port, set_output_port, set_input_flag, set_output_flag, enable
     //H264 encoder
+    mmal_engine encoder(MMAL_COMPONENT_DEFAULT_VIDEO_ENCODER);
+  
+    
+    encoder.set_input_port(640,360,MMAL_ENCODING_I420);
+    encoder.set_output_port(640,360,MMAL_ENCODING_H264);
+    encoder.set_output_flag(MMAL_PARAMETER_VIDEO_ENCODE_INLINE_VECTORS);
+    encoder.enable();
     
     
-    //splitter
-    mmal_engine splitter(MMAL_COMPONENT_DEFAULT_VIDEO_SPLITTER);
-    splitter.set_input_port(640,360,MMAL_ENCODING_I420);
-    splitter.set_output_port(640,360,MMAL_ENCODING_I420);
+    
+    //RGB encoder
+    mmal_engine rgbcoder(MMAL_COMPONENT_DEFAULT_VIDEO_SPLITTER);
+  
+    rgbcoder.set_input_port(640,360,MMAL_ENCODING_I420);
+    rgbcoder.set_output_port(640,360,MMAL_ENCODING_RGB24);
+    
+    rgbcoder.enable();
     
     //JPEG encoder
     mmal_engine jcoder(MMAL_COMPONENT_DEFAULT_IMAGE_ENCODER);
+
     jcoder.set_input_port(640,360,MMAL_ENCODING_I420);
     jcoder.set_output_port(640,360,MMAL_ENCODING_JPEG);
     
-    //Connection splitter_jcoder(&splitter,&jcoder);
+    jcoder.enable();
     
-    //MMAL_CONNECTION_T *connection = 0;
-    //mmal_connection_create(&connection, splitter.engine->output[0], jcoder.engine->input[0], MMAL_CONNECTION_FLAG_TUNNELLING);
- 
-    fprintf(stderr, "There");
-    
-    //splitter_jcoder.enable();
     
     getchar();
     getchar();
@@ -87,15 +54,20 @@ and then sending to three components in parallel: h264 encoder, splitter (as rbg
     
     
     //Buffer creation, make sure buffers are larger than the largest mmal buffer size expected
-   
-  
+    
+    //motion vector buffer
+    Buffer encoder_output(1884160);
+    
+ 
+    //rgb24 buffer
+    Buffer rgbcoder_output((640*368)*3); //((640x368)/256)*4
     
     
     //jpeg at 50% compression
-    //Buffer jcoder_output((640*360*3)*.5); //(640x360x3)*.5
+    Buffer jcoder_output((640*360*3)*.5); //(640x360x3)*.5
     
     
-    std::mutex m_jcoder;
+    std::mutex m_encoder, m_jcoder, m_rgbcoder;
     while (framecount < max_frames) {
       AVFrame *cframe = camera1.run();
       framecount++;
@@ -104,8 +76,22 @@ and then sending to three components in parallel: h264 encoder, splitter (as rbg
       
       //Pass cframe to components here and take the result from _output
       
+      encoder.run(&cframe,&encoder_output);
+      m_encoder.lock(); //lock outbuffer then read
+      if(encoder_output.flags & MMAL_BUFFER_HEADER_FLAG_CODECSIDEINFO) {
+		 fprintf(stderr, "MOTION VECTOR!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");  
+	  }  
+      m_encoder.unlock();
       
-      //splitter_jcoder.run(&cframe,&jcoder_output);
+      
+      rgbcoder.run(&cframe,&rgbcoder_output);
+      m_rgbcoder.lock(); //lock outbuffer then read
+      
+      m_rgbcoder.unlock();
+      
+      
+      
+      jcoder.run(&cframe,&jcoder_output);
       m_jcoder.lock();  //lock outbuffer then read
       
       m_jcoder.unlock();
@@ -125,10 +111,3 @@ and then sending to three components in parallel: h264 encoder, splitter (as rbg
 
 
 
-
-
-    
-    
- 
-	
-}

@@ -25,7 +25,14 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+
+//#ifndef mmal_engine
+//#define mmal_engine
+
 #include "mmal_engine.h"
+
+//#endif
+
 
 
 
@@ -125,9 +132,12 @@ uint8_t mmal_engine::set_output_port(uint16_t owidth, uint16_t oheight, MMAL_FOU
    format_out->type = MMAL_ES_TYPE_VIDEO;
    
    format_out->encoding = oformat;
+   
+   width=owidth;
+   height=oheight;
   
-   //format_out->es->video.width = VCOS_ALIGN_UP(owidth, 32);
-   //format_out->es->video.height = VCOS_ALIGN_UP(oheight, 32);
+   format_out->es->video.width = VCOS_ALIGN_UP(owidth, 32);
+   format_out->es->video.height = VCOS_ALIGN_UP(oheight, 16);
    
    //Defaults
    format_out->es->video.frame_rate.num = 30;
@@ -137,7 +147,7 @@ uint8_t mmal_engine::set_output_port(uint16_t owidth, uint16_t oheight, MMAL_FOU
    format_out->es->video.crop.width = owidth;
    format_out->es->video.crop.height = oheight;
 
-
+   fprintf(stderr, "YOU");
    status = mmal_port_format_commit(engine->output[0]);
    CHECK_STATUS(status, "failed to commit output format");   
    

@@ -39,4 +39,4 @@ motion: $(OBJ)
 
 .PHONY: clean
 clean:
-	rm -f  $(ODIR)/*.o *~ motion_vector include/*.gch
+	rm -f  $(ODIR)/*.o *~ motion* include/*.gch
