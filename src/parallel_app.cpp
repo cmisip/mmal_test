@@ -15,7 +15,15 @@
     
     encoder.set_input_port(640,360,MMAL_ENCODING_I420);
     encoder.set_output_port(640,360,MMAL_ENCODING_H264);
+    
     encoder.set_output_flag(MMAL_PARAMETER_VIDEO_ENCODE_INLINE_VECTORS);
+    
+    encoder.enable_input_port();
+    encoder.enable_output_port();
+    
+    encoder.create_output_pool();
+    encoder.create_input_pool();
+    
     encoder.enable();
     
     
@@ -26,6 +34,12 @@
     rgbcoder.set_input_port(640,360,MMAL_ENCODING_I420);
     rgbcoder.set_output_port(640,360,MMAL_ENCODING_RGB24);
     
+    rgbcoder.enable_input_port();
+    rgbcoder.enable_output_port();
+    
+    rgbcoder.create_output_pool();
+    rgbcoder.create_input_pool();
+    
     rgbcoder.enable();
     
     //JPEG encoder
@@ -33,7 +47,13 @@
 
     jcoder.set_input_port(640,360,MMAL_ENCODING_I420);
     jcoder.set_output_port(640,360,MMAL_ENCODING_JPEG);
-    
+
+    jcoder.enable_input_port();
+    jcoder.enable_output_port();
+ 
+    jcoder.create_output_pool();
+    jcoder.create_input_pool();
+
     jcoder.enable();
     
     
@@ -104,6 +124,9 @@
     fcntl(0, F_SETFL, tem);
     /* End decding */
     fprintf(stderr, "end encoding\n");
+    
+    
+    
      
     
 

@@ -105,19 +105,6 @@ uint8_t mmal_engine::set_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOUR
            
    
    
-   /* The format of both ports is now set so we can get their buffer requirements and create
-    * our buffer headers. We use the buffer pool API to create these. */
-   engine->input[0]->buffer_num = engine->input[0]->buffer_num_min;
-   engine->input[0]->buffer_size = engine->input[0]->buffer_size_min;
-   
-   pool_in = mmal_pool_create(engine->input[0]->buffer_num,
-                              engine->input[0]->buffer_size);
-   
-
-   
-
-   // Store a reference to our context in each port (will be used during callbacks) */
-   engine->input[0]->userdata = (MMAL_PORT_USERDATA_T *)&context;
    
    
    
@@ -163,14 +150,12 @@ uint8_t mmal_engine::set_output_port(uint16_t owidth, uint16_t oheight, MMAL_FOU
            format_out->es->video.crop.x, format_out->es->video.crop.y,
            format_out->es->video.crop.width, format_out->es->video.crop.height);
            
-   engine->output[0]->buffer_num = engine->output[0]->buffer_num_min;
-   engine->output[0]->buffer_size = engine->output[0]->buffer_size_min; 
-   
-   engine->output[0]->userdata = (MMAL_PORT_USERDATA_T *)&context; 
    
    
-   pool_out = mmal_pool_create(engine->output[0]->buffer_num,
-                               engine->output[0]->buffer_size);
+   
+   
+   
+   
    
    return status;
    
@@ -192,15 +177,45 @@ uint8_t mmal_engine::set_output_flag(uint32_t name) {
 };
 
 
+uint8_t mmal_engine::enable_input_port(){
+	status = mmal_port_enable(engine->input[0], input_callback);
+   CHECK_STATUS(status, "failed to enable input port");		
+   
+};	
 
+uint8_t mmal_engine::enable_output_port(){
+   status = mmal_port_enable(engine->output[0], output_callback);
+   CHECK_STATUS(status, "failed to enable output port");  
+   
+};
+
+uint8_t mmal_engine::create_input_pool(){
+	/* The format of both ports is now set so we can get their buffer requirements and create
+    * our buffer headers. We use the buffer pool API to create these. */
+   engine->input[0]->buffer_num = engine->input[0]->buffer_num_min;
+   engine->input[0]->buffer_size = engine->input[0]->buffer_size_min;
+   
+   pool_in = mmal_pool_create(engine->input[0]->buffer_num,
+                              engine->input[0]->buffer_size);
+   
+
+   // Store a reference to our context in each port (will be used during callbacks) */
+   engine->input[0]->userdata = (MMAL_PORT_USERDATA_T *)&context;
+   
+};	
+
+
+uint8_t mmal_engine::create_output_pool(){
+	engine->output[0]->buffer_num = engine->output[0]->buffer_num_min;
+   engine->output[0]->buffer_size = engine->output[0]->buffer_size_min; 
+	pool_out = mmal_pool_create(engine->output[0]->buffer_num,
+                               engine->output[0]->buffer_size);
+                               
+   engine->output[0]->userdata = (MMAL_PORT_USERDATA_T *)&context; 
+	
+};	
 	
 uint8_t mmal_engine::enable() {
-   
-	
-   status = mmal_port_enable(engine->input[0], input_callback);
-   CHECK_STATUS(status, "failed to enable input port");		
-   status = mmal_port_enable(engine->output[0], mmal_engine::output_callback);
-   CHECK_STATUS(status, "failed to enable output port");  
    
    status = mmal_component_enable(engine);
    CHECK_STATUS(status, "failed to enable component");

@@ -1,6 +1,5 @@
 
-
-    
+   
     //CREATE CAMERAS here
     ffmpeg_camera camera1(1,argv[1]);
     
@@ -10,7 +9,7 @@
     //mmal_engine encoder(MMAL_COMPONENT_DEFAULT_VIDEO_ENCODER) 
     //mmal_engine encoder("vc.ril.video_encode");
     //order matters: set_input_port, set_output_port, set_input_flag, set_output_flag, enable
-    //H264 encoder
+  
     
     
     //splitter
@@ -19,19 +18,20 @@
     splitter.set_input_port(640,360,MMAL_ENCODING_I420);
     splitter.set_output_port(640,360,MMAL_ENCODING_I420);
     
+    
     splitter.enable();
     
     //JPEG encoder
-    //mmal_engine jcoder(MMAL_COMPONENT_DEFAULT_IMAGE_ENCODER);
+    mmal_engine jcoder(MMAL_COMPONENT_DEFAULT_IMAGE_ENCODER);
 
-    //jcoder.set_input_port(640,360,MMAL_ENCODING_I420);
-    //jcoder.set_output_port(640,360,MMAL_ENCODING_JPEG);
+    jcoder.set_input_port(640,360,MMAL_ENCODING_I420);
+    jcoder.set_output_port(640,360,MMAL_ENCODING_JPEG);
     
-    //jcoder.enable();
+    jcoder.enable();
     
-    //Connection splitter_jcoder(&splitter,&jcoder);
+    Connection splitter_jcoder(&splitter,&jcoder);
     
-    //splitter_jcoder.enable();
+    splitter_jcoder.enable();
     
     getchar();
     getchar();
@@ -62,16 +62,16 @@
     while (framecount < max_frames) {
       AVFrame *cframe = camera1.run();
       framecount++;
-      fprintf(stderr, "Frame number %d\n",framecount);
+      fprintf(stderr, "Frame numbers %d\n",framecount);
       
       
       //Pass cframe to components here and take the result from _output
       
       
-      //splitter_jcoder.run(&cframe,&jcoder_output);
-      m_jcoder.lock();  //lock outbuffer then read
+      splitter_jcoder.run(&cframe,&jcoder_output);
+      //m_jcoder.lock();  //lock outbuffer then read
       
-      m_jcoder.unlock();
+      //m_jcoder.unlock();
       
       n = read(0, &c, 1);
         if (n > 0) break;

@@ -4,138 +4,134 @@
 #include "connection.h"
 
 //#endif
-
-
-
-
-
-/** Callback from a control port. Error and EOS events stop playback. */
-void Connection::control_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)
-{
-   struct CONTEXT_T *ctx = (struct CONTEXT_T *)port->userdata;
-
-   if (buffer->cmd == MMAL_EVENT_ERROR)
-      ctx->status = *(MMAL_STATUS_T *)buffer->data;
-   else if (buffer->cmd == MMAL_EVENT_EOS)
-      ctx->eos = MMAL_TRUE;
-
+void Connection::input_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer) {
+   //CONTEXT_T *ctx = (struct CONTEXT_T *)port->userdata;
    mmal_buffer_header_release(buffer);
-
-   /* The processing is done in our main thread */
-   //vcos_semaphore_post(&ctx->semaphore);
 }
 
-/** Callback from the connection. Buffer is available. */
-void Connection::connection_callback(MMAL_CONNECTION_T *connection)
-{
-   struct CONTEXT_T *ctx = (struct CONTEXT_T *)connection->user_data;
+void Connection::output_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer) {
+   CONTEXT_T *ctx = (struct CONTEXT_T *)port->userdata;
+   mmal_queue_put(ctx->queue, buffer);
+}
 
-   /* The processing is done in our main thread */
-   //vcos_semaphore_post(&ctx->semaphore);
+uint8_t Connection::connect_ports(MMAL_PORT_T *output_port, MMAL_PORT_T *input_port, MMAL_CONNECTION_T **connection)
+{
+   MMAL_STATUS_T status;
+
+   status =  mmal_connection_create(connection, output_port, input_port, MMAL_CONNECTION_FLAG_TUNNELLING | MMAL_CONNECTION_FLAG_ALLOCATION_ON_OUTPUT);
+   CHECK_STATUS(status, "failed to enable output port");
+ 
+   return status;
 }
 
 
 uint8_t Connection::enable(){
-	status = mmal_connection_enable(connection);
-    CHECK_STATUS(status, "failed to enable connection");
+	status =  mmal_connection_enable(connection);
+	CHECK_STATUS(status, "failed to enable connection");
+	
+	input_pool = mmal_pool_create(input_port->buffer_num,
+                                  input_port->buffer_size);
     
-   MMAL_ES_FORMAT_T *format_in = input_engine->engine->input[0]->format; 
-   /* Display the port format */
-   fprintf(stderr,"---------------------------------------------------\n");
-   fprintf(stderr, "INPUT %s\n", input_engine->engine->input[0]->name);
-   fprintf(stderr, " type: %i, fourcc: %4.4s\n", format_in->type, (char *)&format_in->encoding);
-   fprintf(stderr, " bitrate: %i, framed: %i\n", format_in->bitrate,
-           !!(format_in->flags & MMAL_ES_FORMAT_FLAG_FRAMED));
-   fprintf(stderr, " width: %i, height: %i, (%i,%i,%i,%i)\n",
-           format_in->es->video.width, format_in->es->video.height,
-           format_in->es->video.crop.x, format_in->es->video.crop.y,
-           format_in->es->video.crop.width, format_in->es->video.crop.height);
-           
-            
     
-   MMAL_ES_FORMAT_T *format_out = output_engine->engine->output[0]->format; 
-    /* Display the port format */
-   fprintf(stderr,"---------------------------------------------------\n");
-   fprintf(stderr, "OUTPUT %s\n", output_engine->engine->output[0]->name);
-   fprintf(stderr, " type: %i, fourcc: %4.4s\n", format_out->type, (char *)&format_out->encoding);
-   fprintf(stderr, " bitrate: %i, framed: %i\n", format_out->bitrate,
-           !!(format_out->flags & MMAL_ES_FORMAT_FLAG_FRAMED));
-   fprintf(stderr, " width: %i, height: %i, (%i,%i,%i,%i)\n",
-           format_out->es->video.width, format_out->es->video.height,
-           format_out->es->video.crop.x, format_out->es->video.crop.y,
-           format_out->es->video.crop.width, format_out->es->video.crop.height);
-           
-   
-   
-   
-   
-    return status;
-};	
+    output_pool = mmal_pool_create(output_port->buffer_num,
+                                   output_port->buffer_size);
+
+    //Enable the input port and assign an input context
+    input_port->userdata = (struct MMAL_PORT_USERDATA_T *)&contexti;
+    
+    status = mmal_port_enable(input_port, input_callback); 
+    CHECK_STATUS(status, "failed to enable connection input port");
+    //Create output context queue    
+    
+    contexto.queue = mmal_queue_create();
+    
+    // Store a reference to our context in each port (will be used during callbacks) 
+    output_port->userdata = (struct MMAL_PORT_USERDATA_T *)&contexto; 
+    
+    //Enable the output port for resizerd and assign an output context
+    status = mmal_port_enable(output_port, output_callback);
+    CHECK_STATUS(status, "failed to enable connection output port");
+    
+    
+    
+	
+	
+	buffsize=av_image_get_buffer_size(AV_PIX_FMT_YUV420P, input_engine->width, input_engine->height, 1);
+	
+	fprintf(stderr, "Constructing mmal connection %s ******************\n", connection->name);
+	return status;
+};
 
 
 uint8_t Connection::run(AVFrame **frame, Buffer *outbuf){
-	
-	//Send frame buffer data to input_engine input port
-	MMAL_BUFFER_HEADER_T *buffer;
-	if ((buffer = mmal_queue_get(input_engine->pool_in->queue)) != NULL)
-      {
-         
-         mmal_buffer_header_mem_lock(buffer);
-         av_image_copy_to_buffer(buffer->data, input_engine->buffsize, (const uint8_t **)(*frame)->data, (*frame)->linesize,
+	             MMAL_BUFFER_HEADER_T *buffer;
+	            //send buffer with yuv420 data to pipeline input
+                if ((buffer = mmal_queue_get(input_pool->queue)) != NULL)  {
+                    
+                    
+                  mmal_buffer_header_mem_lock(buffer);
+                  av_image_copy_to_buffer(buffer->data, buffsize, (const uint8_t **)(*frame)->data, (*frame)->linesize,
                                 AV_PIX_FMT_YUV420P, (*frame)->width, (*frame)->height, 1);
-         buffer->length=input_engine->buffsize;
-         mmal_buffer_header_mem_unlock(buffer);
+                  buffer->length=buffsize;                                                                     //if we supply a time stamp to pts, the first buffer returned with the same time stamp is the matching data for the frame sent
+                  mmal_buffer_header_mem_unlock(buffer);
+                       
+                  fprintf(stderr, "%s sending >>>>> %i bytes\n", input_port->name, (int)buffer->length);
+                  status = mmal_port_send_buffer(input_port, buffer);
+                  CHECK_STATUS(status, "failed to send buffer")     
+                 }
+                 
+                  while ((buffer = mmal_queue_get(contexto.queue)) != NULL) {
+					mmal_buffer_header_mem_lock(buffer);
+                    fprintf(stderr, "%s receiving %d bytes <<<<< frame\n", output_port->name, buffer->length);
          
-            
-
-         fprintf(stderr, "%s sending >>>>> %i bytes\n", input_engine->engine->input[0]->name, (int)buffer->length);
-         status = mmal_port_send_buffer(input_engine->engine->input[0], buffer);
-         CHECK_STATUS(status, "failed to send buffer");
-      }
-      
-      //get buffers from the output_engine queue and process them
-      
-      while ((buffer = mmal_queue_get(output_engine->context.queue)) != NULL)
-      {
-         mmal_buffer_header_mem_lock(buffer);
-         fprintf(stderr, "%s receiving %d bytes <<<<< frame\n", output_engine->engine->output[0]->name, buffer->length);
+                    memset(outbuf->data,0,outbuf->length);
+                    memcpy(outbuf->data,buffer->data,buffer->length);
+                    outbuf->length=buffer->length;
+                    outbuf->flags=buffer->flags;
+                    outbuf->cmd=buffer->cmd;
+                    outbuf->pts=buffer->pts;
+                    outbuf->dts=buffer->dts;
          
-         memset(outbuf->data,0,outbuf->length);
-         memcpy(outbuf->data,buffer->data,buffer->length);
-         outbuf->length=buffer->length;
-         outbuf->flags=buffer->flags;
-         outbuf->cmd=buffer->cmd;
-         outbuf->pts=buffer->pts;
-         outbuf->dts=buffer->dts;
-         
-         mmal_buffer_header_mem_unlock(buffer); 
-         mmal_buffer_header_release(buffer);
-      }
-      
-      //send free buffers to the output_engine port
-      while ((buffer = mmal_queue_get(output_engine->pool_out->queue)) != NULL)
-      {
-         status = mmal_port_send_buffer(output_engine->engine->output[0], buffer);
-         CHECK_STATUS(status, "failed to send buffer");
-      }
-     return status;    
+                    mmal_buffer_header_mem_unlock(buffer); 
+                    mmal_buffer_header_release(buffer);  
+					  
+					  
+				  }	
+				  
+				  while ((buffer = mmal_queue_get(output_pool->queue)) != NULL)
+                  {
+                    status = mmal_port_send_buffer(output_port, buffer);
+                    CHECK_STATUS(status, "failed to send buffer");
+                   }
+     return status;  
+                 
+	
 };	
 
 Connection::Connection(mmal_engine *engine1, mmal_engine *engine2):input_engine(engine1),output_engine(engine2){
 
-
-status = mmal_connection_create(&connection, engine1->engine->output[0], engine2->engine->input[0], MMAL_CONNECTION_FLAG_TUNNELLING);
-   CHECK_STATUS(status, "failed to create connection \n");
-
-   ////connection->user_data = &context;
-   //connection->callback = connection_callback;
-   //input_engine=engine1;
-   //output_engine=engine2;
-
+    connect_ports(engine1->engine->output[0],engine2->engine->input[0], &connection);
+    
+    input_port = engine1->engine->input[0];
+    output_port = engine2->engine->output[0];
+    
 };
 
 Connection::~Connection(){
-	fprintf(stderr,"Destroying connection %s", connection->out->name);
+	fprintf(stderr,"Destroying connection %s\n", connection->out->name);
 	if (connection)
          mmal_connection_destroy(connection);
+    
+    if (output_pool)
+      mmal_pool_destroy(output_pool);
+      
+    if (input_pool)
+      mmal_pool_destroy(input_pool);
+     
+     
+    if (contexto.queue)
+      mmal_queue_destroy(contexto.queue);
+     
+         
+         
 };

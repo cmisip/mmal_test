@@ -30,9 +30,14 @@ class mmal_engine{
 public:	
     //uint8_t init(const char **name);
     uint8_t set_input_port(uint16_t width, uint16_t height, MMAL_FOURCC_T iformat);
+    
     uint8_t set_output_port(uint16_t width, uint16_t height, MMAL_FOURCC_T oformat);
     uint8_t set_input_flag(uint32_t name);
     uint8_t set_output_flag(uint32_t name);
+    uint8_t enable_input_port();
+    uint8_t enable_output_port();
+    uint8_t create_input_pool();
+    uint8_t create_output_pool();
     static void input_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer );
     static void output_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer );
     uint8_t enable();
