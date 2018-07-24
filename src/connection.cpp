@@ -28,19 +28,23 @@ uint8_t Connection::connect_ports(MMAL_PORT_T *output_port, MMAL_PORT_T *input_p
 uint8_t Connection::enable(){
 	status =  mmal_connection_enable(connection);
 	CHECK_STATUS(status, "failed to enable connection");
-	
+	if (input_port) {
 	input_pool = mmal_pool_create(input_port->buffer_num,
                                   input_port->buffer_size);
     
-    
-    output_pool = mmal_pool_create(output_port->buffer_num,
-                                   output_port->buffer_size);
-
     //Enable the input port and assign an input context
     input_port->userdata = (struct MMAL_PORT_USERDATA_T *)&contexti;
     
     status = mmal_port_enable(input_port, input_callback); 
     CHECK_STATUS(status, "failed to enable connection input port");
+    
+    
+    }
+    
+    if (output_port) {
+    output_pool = mmal_pool_create(output_port->buffer_num,
+                                   output_port->buffer_size);
+
     //Create output context queue    
     
     contexto.queue = mmal_queue_create();
@@ -51,6 +55,9 @@ uint8_t Connection::enable(){
     //Enable the output port for resizerd and assign an output context
     status = mmal_port_enable(output_port, output_callback);
     CHECK_STATUS(status, "failed to enable connection output port");
+    }
+    
+    
     
     
     
@@ -66,6 +73,8 @@ uint8_t Connection::enable(){
 uint8_t Connection::run(AVFrame **frame, Buffer *outbuf){
 	             MMAL_BUFFER_HEADER_T *buffer;
 	            //send buffer with yuv420 data to pipeline input
+	            
+	            if (input_port) { 
                 if ((buffer = mmal_queue_get(input_pool->queue)) != NULL)  {
                     
                     
@@ -79,7 +88,9 @@ uint8_t Connection::run(AVFrame **frame, Buffer *outbuf){
                   status = mmal_port_send_buffer(input_port, buffer);
                   CHECK_STATUS(status, "failed to send buffer")     
                  }
-                 
+			     }
+			     
+			     if (output_port) {
                   while ((buffer = mmal_queue_get(contexto.queue)) != NULL) {
 					mmal_buffer_header_mem_lock(buffer);
                     fprintf(stderr, "%s receiving %d bytes <<<<< frame\n", output_port->name, buffer->length);
@@ -103,6 +114,7 @@ uint8_t Connection::run(AVFrame **frame, Buffer *outbuf){
                     status = mmal_port_send_buffer(output_port, buffer);
                     CHECK_STATUS(status, "failed to send buffer");
                    }
+                  } 
      return status;  
                  
 	
@@ -112,7 +124,9 @@ Connection::Connection(mmal_engine *engine1, mmal_engine *engine2):input_engine(
 
     connect_ports(engine1->engine->output[0],engine2->engine->input[0], &connection);
     
+    if (engine1->engine->input)
     input_port = engine1->engine->input[0];
+    if (engine2->engine->output)
     output_port = engine2->engine->output[0];
     
 };
@@ -128,10 +142,10 @@ Connection::~Connection(){
     if (input_pool)
       mmal_pool_destroy(input_pool);
      
-     
+    
     if (contexto.queue)
       mmal_queue_destroy(contexto.queue);
      
-         
+     fprintf(stderr,"Done Destroying connection \n");    
          
 };

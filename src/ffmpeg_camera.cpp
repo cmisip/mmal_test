@@ -57,7 +57,7 @@ uint8_t ffmpeg_camera::initialize(){
                fprintf(stderr, "Can't find codec for video stream");
         } else {
            //Debug(1, "Video Found decoder");
-           fprintf(stderr, "Found HW MMAL decoder");
+           fprintf(stderr, "Found HW MMAL decoder\n");
         }  
 
         

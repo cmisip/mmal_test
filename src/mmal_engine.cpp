@@ -64,18 +64,22 @@ void mmal_engine::output_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffe
 
 
 
-uint8_t mmal_engine::set_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOURCC_T iformat){
+uint8_t mmal_engine::set_video_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOURCC_T iformat){
 	    
     /* Set format of video engine input port */
    MMAL_ES_FORMAT_T *format_in = engine->input[0]->format;
    format_in->type = MMAL_ES_TYPE_VIDEO;
    format_in->encoding = iformat;
    
+   //width=VCOS_ALIGN_UP(iwidth,32);
+   //height=VCOS_ALIGN_UP(iheight,16);
+   
    width=iwidth;
    height=iheight;
-   
-   format_in->es->video.width = VCOS_ALIGN_UP(iwidth, 32);
-   format_in->es->video.height = VCOS_ALIGN_UP(iheight,16);
+   //format_in->es->video.width = VCOS_ALIGN_UP(iwidth, 32);
+   //format_in->es->video.height = VCOS_ALIGN_UP(iheight,16);
+   format_in->es->video.width = iwidth;
+   format_in->es->video.height = iheight;
    
    
    format_in->es->video.frame_rate.num = 30;
@@ -84,6 +88,8 @@ uint8_t mmal_engine::set_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOUR
    format_in->es->video.par.den = 1;
    format_in->es->video.crop.width = iwidth;
    format_in->es->video.crop.height = iheight;
+   //format_in->es->video.crop.width = VCOS_ALIGN_UP(iwidth, 32);
+   //format_in->es->video.crop.height = VCOS_ALIGN_UP(iheight,16);
    
    
    
@@ -91,18 +97,6 @@ uint8_t mmal_engine::set_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOUR
    CHECK_STATUS(status, "failed to commit input format");   
 
    
-   /* Display the port format */
-   fprintf(stderr,"---------------------------------------------------\n");
-   fprintf(stderr, "INPUT %s\n", engine->input[0]->name);
-   fprintf(stderr, " type: %i, fourcc: %4.4s\n", format_in->type, (char *)&format_in->encoding);
-   fprintf(stderr, " bitrate: %i, framed: %i\n", format_in->bitrate,
-           !!(format_in->flags & MMAL_ES_FORMAT_FLAG_FRAMED));
-   fprintf(stderr, " width: %i, height: %i, (%i,%i,%i,%i)\n",
-           format_in->es->video.width, format_in->es->video.height,
-           format_in->es->video.crop.x, format_in->es->video.crop.y,
-           format_in->es->video.crop.width, format_in->es->video.crop.height);
-           
-           
    
    
    
@@ -114,7 +108,7 @@ uint8_t mmal_engine::set_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOUR
 };
 
 
-uint8_t mmal_engine::set_output_port(uint16_t owidth, uint16_t oheight, MMAL_FOURCC_T oformat){
+uint8_t mmal_engine::set_video_output_port(uint16_t owidth, uint16_t oheight, MMAL_FOURCC_T oformat){
    MMAL_ES_FORMAT_T *format_out = engine->output[0]->format;
    format_out->type = MMAL_ES_TYPE_VIDEO;
    
@@ -123,8 +117,11 @@ uint8_t mmal_engine::set_output_port(uint16_t owidth, uint16_t oheight, MMAL_FOU
    width=owidth;
    height=oheight;
   
-   format_out->es->video.width = VCOS_ALIGN_UP(owidth, 32);
-   format_out->es->video.height = VCOS_ALIGN_UP(oheight, 16);
+   //format_out->es->video.width = VCOS_ALIGN_UP(owidth, 32);
+   //format_out->es->video.height = VCOS_ALIGN_UP(oheight, 16);
+   
+   format_out->es->video.width = owidth;
+   format_out->es->video.height = oheight;
    
    //Defaults
    format_out->es->video.frame_rate.num = 30;
@@ -133,25 +130,13 @@ uint8_t mmal_engine::set_output_port(uint16_t owidth, uint16_t oheight, MMAL_FOU
    format_out->es->video.par.den = 1;
    format_out->es->video.crop.width = owidth;
    format_out->es->video.crop.height = oheight;
+   //format_out->es->video.crop.width = VCOS_ALIGN_UP(owidth, 32);
+   //format_out->es->video.crop.height = VCOS_ALIGN_UP(oheight,16);
 
-   fprintf(stderr, "YOU");
    status = mmal_port_format_commit(engine->output[0]);
    CHECK_STATUS(status, "failed to commit output format");   
    
 
-    /* Display the port format */
-   fprintf(stderr,"---------------------------------------------------\n");
-   fprintf(stderr, "OUTPUT %s\n", engine->output[0]->name);
-   fprintf(stderr, " type: %i, fourcc: %4.4s\n", format_out->type, (char *)&format_out->encoding);
-   fprintf(stderr, " bitrate: %i, framed: %i\n", format_out->bitrate,
-           !!(format_out->flags & MMAL_ES_FORMAT_FLAG_FRAMED));
-   fprintf(stderr, " width: %i, height: %i, (%i,%i,%i,%i)\n",
-           format_out->es->video.width, format_out->es->video.height,
-           format_out->es->video.crop.x, format_out->es->video.crop.y,
-           format_out->es->video.crop.width, format_out->es->video.crop.height);
-           
-   
-   
    
    
    
@@ -177,13 +162,13 @@ uint8_t mmal_engine::set_output_flag(uint32_t name) {
 };
 
 
-uint8_t mmal_engine::enable_input_port(){
+uint8_t mmal_engine::enable_video_input_port(){
 	status = mmal_port_enable(engine->input[0], input_callback);
    CHECK_STATUS(status, "failed to enable input port");		
    
 };	
 
-uint8_t mmal_engine::enable_output_port(){
+uint8_t mmal_engine::enable_video_output_port(){
    status = mmal_port_enable(engine->output[0], output_callback);
    CHECK_STATUS(status, "failed to enable output port");  
    
@@ -192,8 +177,8 @@ uint8_t mmal_engine::enable_output_port(){
 uint8_t mmal_engine::create_input_pool(){
 	/* The format of both ports is now set so we can get their buffer requirements and create
     * our buffer headers. We use the buffer pool API to create these. */
-   engine->input[0]->buffer_num = engine->input[0]->buffer_num_min;
-   engine->input[0]->buffer_size = engine->input[0]->buffer_size_min;
+   engine->input[0]->buffer_num = engine->input[0]->buffer_num_recommended;
+   engine->input[0]->buffer_size = engine->input[0]->buffer_size_recommended;
    
    pool_in = mmal_pool_create(engine->input[0]->buffer_num,
                               engine->input[0]->buffer_size);
@@ -206,8 +191,8 @@ uint8_t mmal_engine::create_input_pool(){
 
 
 uint8_t mmal_engine::create_output_pool(){
-	engine->output[0]->buffer_num = engine->output[0]->buffer_num_min;
-   engine->output[0]->buffer_size = engine->output[0]->buffer_size_min; 
+	engine->output[0]->buffer_num = engine->output[0]->buffer_num_recommended;
+   engine->output[0]->buffer_size = engine->output[0]->buffer_size_recommended; 
 	pool_out = mmal_pool_create(engine->output[0]->buffer_num,
                                engine->output[0]->buffer_size);
                                
@@ -217,16 +202,75 @@ uint8_t mmal_engine::create_output_pool(){
 	
 uint8_t mmal_engine::enable() {
    
+   //special cases 
+     if (strcmp(name, "vc.ril.video_render") == 0) {
+		//MMAL_PORT_T *preview_port = NULL;
+        //preview_port = engine->input[0];
+
+        //MMAL_DISPLAYREGION_T param;
+        param.hdr.id = MMAL_PARAMETER_DISPLAYREGION;
+        param.hdr.size = sizeof(MMAL_DISPLAYREGION_T);
+
+        param.set = MMAL_DISPLAY_SET_LAYER;
+        param.layer = 1;
+
+        param.set |= MMAL_DISPLAY_SET_ALPHA;
+        param.alpha = 255;
+      
+        param.fullscreen = 1;
+    
+        mmal_port_parameter_set(engine->input[0], &param.hdr); 
+      //  mmal_component_enable(engine);
+	 } 	 
+   
+   
    status = mmal_component_enable(engine);
    CHECK_STATUS(status, "failed to enable component");
+  
+  
    
    /* Create a queue to store our decoded video frames. The callback we will get when
     * a frame has been decoded will put the frame into this queue. */
    context.queue = mmal_queue_create();
    
-   buffsize=av_image_get_buffer_size(AV_PIX_FMT_YUV420P, width, height, 1);
+   buffsize=av_image_get_buffer_size(AV_PIX_FMT_YUV420P, VCOS_ALIGN_UP(width,32), VCOS_ALIGN_UP(height,16), 1);
     
-   fprintf(stderr, "Constructing mmal engine %s ******************\n", engine->output[0]->name);
+   fprintf(stderr, "Constructing mmal engine %s ******************\n", name);
+   
+   
+   if (input_port) {
+   MMAL_ES_FORMAT_T *format_in = engine->input[0]->format;
+   /* Display the port format */
+   fprintf(stderr,"---------------------------------------------------\n");
+   fprintf(stderr, "INPUT %s\n", engine->input[0]->name);
+   fprintf(stderr, " type: %i, fourcc: %4.4s\n", format_in->type, (char *)&format_in->encoding);
+   fprintf(stderr, " bitrate: %i, framed: %i\n", format_in->bitrate,
+           !!(format_in->flags & MMAL_ES_FORMAT_FLAG_FRAMED));
+   fprintf(stderr, " width: %i, height: %i, (%i,%i,%i,%i)\n",
+           format_in->es->video.width, format_in->es->video.height,
+           format_in->es->video.crop.x, format_in->es->video.crop.y,
+           format_in->es->video.crop.width, format_in->es->video.crop.height);
+           
+   }        
+   
+   if (output_port) {
+   MMAL_ES_FORMAT_T *format_out = engine->output[0]->format;
+    /* Display the port format */
+   fprintf(stderr,"---------------------------------------------------\n");
+   fprintf(stderr, "OUTPUT %s\n", engine->output[0]->name);
+   fprintf(stderr, " type: %i, fourcc: %4.4s\n", format_out->type, (char *)&format_out->encoding);
+   fprintf(stderr, " bitrate: %i, framed: %i\n", format_out->bitrate,
+           !!(format_out->flags & MMAL_ES_FORMAT_FLAG_FRAMED));
+   fprintf(stderr, " width: %i, height: %i, (%i,%i,%i,%i)\n",
+           format_out->es->video.width, format_out->es->video.height,
+           format_out->es->video.crop.x, format_out->es->video.crop.y,
+           format_out->es->video.crop.width, format_out->es->video.crop.height);
+           
+   }
+   
+   
+   
+   
 
    return status;
 	
@@ -282,12 +326,19 @@ uint8_t mmal_engine::run(AVFrame **frame, Buffer *outbuf)
 mmal_engine::mmal_engine(const char* iname):name(iname) {
 	status = mmal_component_create(name, &engine);
     CHECK_STATUS(status, "failed to create engine");
+    
+    if (engine->input)
+    input_port = engine->input[0];
+    if (engine->output)
+    output_port = engine->output[0]; 
+          
 };	
 	
 mmal_engine::~mmal_engine() {
 	
-   fprintf(stderr,"Destructing mmal engine %s\n", engine->output[0]->name);
-	
+   //if (engine->output[0]->name)	
+     fprintf(stderr,"Destructing mmal engine %s\n", engine->name);
+	//fprintf(stderr,"Destructing mmal engine\n");
 	   /* Cleanup everything */
    if (engine)
       mmal_component_destroy(engine);
@@ -297,4 +348,6 @@ mmal_engine::~mmal_engine() {
       mmal_pool_destroy(pool_out);
    if (context.queue)
       mmal_queue_destroy(context.queue);
+      
+      fprintf(stderr, "Done destructing engine");
 };

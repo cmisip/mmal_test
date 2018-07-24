@@ -34,9 +34,9 @@ int main(int argc, char **argv) {
 and then sending to three components in parallel: h264 encoder, splitter (as rbg encoder ), jpeg encoder. */
 //#include "parallel_app.cpp"    
 
-#include "connections_create_app.cpp"
+//#include "connections_create_app.cpp"
 
-
+#include "connect_renderer.cpp"
  
 
 };
