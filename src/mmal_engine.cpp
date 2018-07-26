@@ -191,9 +191,13 @@ uint8_t mmal_engine::create_input_pool(){
 
 
 uint8_t mmal_engine::create_output_pool(){
-	engine->output[0]->buffer_num = engine->output[0]->buffer_num_recommended;
+	/* Create a queue to store our decoded video frames. The callback we will get when
+    * a frame has been decoded will put the frame into this queue. */
+   context.queue = mmal_queue_create();
+	
+   engine->output[0]->buffer_num = engine->output[0]->buffer_num_recommended;
    engine->output[0]->buffer_size = engine->output[0]->buffer_size_recommended; 
-	pool_out = mmal_pool_create(engine->output[0]->buffer_num,
+   pool_out = mmal_pool_create(engine->output[0]->buffer_num,
                                engine->output[0]->buffer_size);
                                
    engine->output[0]->userdata = (MMAL_PORT_USERDATA_T *)&context; 
@@ -220,7 +224,6 @@ uint8_t mmal_engine::enable() {
         param.fullscreen = 1;
     
         mmal_port_parameter_set(engine->input[0], &param.hdr); 
-      //  mmal_component_enable(engine);
 	 } 	 
    
    
@@ -229,9 +232,7 @@ uint8_t mmal_engine::enable() {
   
   
    
-   /* Create a queue to store our decoded video frames. The callback we will get when
-    * a frame has been decoded will put the frame into this queue. */
-   context.queue = mmal_queue_create();
+   
    
    buffsize=av_image_get_buffer_size(AV_PIX_FMT_YUV420P, VCOS_ALIGN_UP(width,32), VCOS_ALIGN_UP(height,16), 1);
     
@@ -277,10 +278,11 @@ uint8_t mmal_engine::enable() {
 }		
 	
 uint8_t mmal_engine::run(AVFrame **frame, Buffer *outbuf)
-{
+{   
 	MMAL_BUFFER_HEADER_T *buffer;
+	if (input_port) { 
 	if ((buffer = mmal_queue_get(pool_in->queue)) != NULL)
-      {
+      {  
          
          mmal_buffer_header_mem_lock(buffer);
          av_image_copy_to_buffer(buffer->data, buffsize, (const uint8_t **)(*frame)->data, (*frame)->linesize,
@@ -292,23 +294,26 @@ uint8_t mmal_engine::run(AVFrame **frame, Buffer *outbuf)
 
          fprintf(stderr, "%s sending >>>>> %i bytes\n", engine->input[0]->name, (int)buffer->length);
          status = mmal_port_send_buffer(engine->input[0], buffer);
-         CHECK_STATUS(status, "failed to send buffer");
+         CHECK_STATUS(status, "failed to send buffer to input port");
       }
 
-     
+      }
+      
+      if (output_port) {
       while ((buffer = mmal_queue_get(context.queue)) != NULL)
       {
          mmal_buffer_header_mem_lock(buffer);
          fprintf(stderr, "%s receiving %d bytes <<<<< frame\n", engine->output[0]->name, buffer->length);
          
-         memset(outbuf->data,0,outbuf->length);
-         memcpy(outbuf->data,buffer->data,buffer->length);
-         outbuf->length=buffer->length;
-         outbuf->flags=buffer->flags;
-         outbuf->cmd=buffer->cmd;
-         outbuf->pts=buffer->pts;
-         outbuf->dts=buffer->dts;
-         
+         if (outbuf) {
+           memset(outbuf->data,0,outbuf->length);
+           memcpy(outbuf->data,buffer->data,buffer->length);
+           outbuf->length=buffer->length;
+           outbuf->flags=buffer->flags;
+           outbuf->cmd=buffer->cmd;
+           outbuf->pts=buffer->pts;
+           outbuf->dts=buffer->dts;
+         }
          mmal_buffer_header_mem_unlock(buffer); 
          mmal_buffer_header_release(buffer);
       }
@@ -317,8 +322,12 @@ uint8_t mmal_engine::run(AVFrame **frame, Buffer *outbuf)
       while ((buffer = mmal_queue_get(pool_out->queue)) != NULL)
       {
          status = mmal_port_send_buffer(engine->output[0], buffer);
-         CHECK_STATUS(status, "failed to send buffer");
+         CHECK_STATUS(status, "failed to send buffer to output port");
       }
+      
+  }
+      
+      
      return status;    
 }	
 
@@ -336,9 +345,8 @@ mmal_engine::mmal_engine(const char* iname):name(iname) {
 	
 mmal_engine::~mmal_engine() {
 	
-   //if (engine->output[0]->name)	
+   
      fprintf(stderr,"Destructing mmal engine %s\n", engine->name);
-	//fprintf(stderr,"Destructing mmal engine\n");
 	   /* Cleanup everything */
    if (engine)
       mmal_component_destroy(engine);
@@ -349,5 +357,5 @@ mmal_engine::~mmal_engine() {
    if (context.queue)
       mmal_queue_destroy(context.queue);
       
-      fprintf(stderr, "Done destructing engine");
+      
 };

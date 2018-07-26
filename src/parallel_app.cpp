@@ -8,21 +8,33 @@
     //CREATE COMPONENTS HERE
     //mmal_engine encoder(MMAL_COMPONENT_DEFAULT_VIDEO_ENCODER) 
     //mmal_engine encoder("vc.ril.video_encode");
-    //order matters: set_input_port, set_output_port, set_input_flag, set_output_flag, enable
+    //order matters, I think: 
+    //1. set_video_input_port
+    //2. set_video_output_port
+    //3. <optional> set_input_flag, set_output_flag
+    //4. enable_video_input_port
+    //5. enable_video_output_port
+    //6. create_input_pool
+    //7. create_output_pool
+    //8. enable
+    
+    
+    
     //H264 encoder
     mmal_engine encoder(MMAL_COMPONENT_DEFAULT_VIDEO_ENCODER);
   
     
-    encoder.set_input_port(640,360,MMAL_ENCODING_I420);
-    encoder.set_output_port(640,360,MMAL_ENCODING_H264);
+    encoder.set_video_input_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_I420);
+    encoder.set_video_output_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_H264);
     
     encoder.set_output_flag(MMAL_PARAMETER_VIDEO_ENCODE_INLINE_VECTORS);
     
-    encoder.enable_input_port();
-    encoder.enable_output_port();
+    encoder.enable_video_input_port();
+    encoder.enable_video_output_port();
     
     encoder.create_output_pool();
     encoder.create_input_pool();
+    
     
     encoder.enable();
     
@@ -31,25 +43,27 @@
     //RGB encoder
     mmal_engine rgbcoder(MMAL_COMPONENT_DEFAULT_VIDEO_SPLITTER);
   
-    rgbcoder.set_input_port(640,360,MMAL_ENCODING_I420);
-    rgbcoder.set_output_port(640,360,MMAL_ENCODING_RGB24);
+    rgbcoder.set_video_input_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_I420);
+    rgbcoder.set_video_output_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_RGB24);
     
-    rgbcoder.enable_input_port();
-    rgbcoder.enable_output_port();
+    rgbcoder.enable_video_input_port();
+    rgbcoder.enable_video_output_port();
     
     rgbcoder.create_output_pool();
     rgbcoder.create_input_pool();
+    
+    
     
     rgbcoder.enable();
     
     //JPEG encoder
     mmal_engine jcoder(MMAL_COMPONENT_DEFAULT_IMAGE_ENCODER);
 
-    jcoder.set_input_port(640,360,MMAL_ENCODING_I420);
-    jcoder.set_output_port(640,360,MMAL_ENCODING_JPEG);
+    jcoder.set_video_input_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_I420);
+    jcoder.set_video_output_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_JPEG);
 
-    jcoder.enable_input_port();
-    jcoder.enable_output_port();
+    jcoder.enable_video_input_port();
+    jcoder.enable_video_output_port();
  
     jcoder.create_output_pool();
     jcoder.create_input_pool();

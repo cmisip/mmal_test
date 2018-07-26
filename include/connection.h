@@ -19,6 +19,8 @@ Connection(mmal_engine *engine1, mmal_engine *engine2);
 static void input_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer);
 static void output_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer);
 uint8_t enable();
+uint8_t create_input_pool();
+uint8_t create_output_pool();
 static uint8_t connect_ports(MMAL_PORT_T *output_port, MMAL_PORT_T *input_port, MMAL_CONNECTION_T **connection);
 uint8_t run(AVFrame **frame, Buffer *outbuf);
 

@@ -5,32 +5,31 @@
     
     
     
-    //CREATE COMPONENTS HERE
-    //mmal_engine encoder(MMAL_COMPONENT_DEFAULT_VIDEO_ENCODER) 
-    //mmal_engine encoder("vc.ril.video_encode");
-    //order matters: set_input_port, set_output_port, set_input_flag, set_output_flag, enable
-  
+    //CREATE CONNECTIONS HERE
+    //Steps
+    //1. Setup the mmal_components
+    //2. Enable the mmal_components
+    //3. Create the connection
+    //4. Create the connection's input pool
+    //5. Create the connections's output pool
+    //6. Enable the connection
     
     
     //splitter
     mmal_engine splitter(MMAL_COMPONENT_DEFAULT_VIDEO_SPLITTER);
-  
-    splitter.set_input_port(640,360,MMAL_ENCODING_I420);
-    splitter.set_output_port(640,360,MMAL_ENCODING_I420);
-    
-    
+    splitter.set_video_input_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_I420);
+    splitter.set_video_output_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_I420);
     splitter.enable();
     
     //JPEG encoder
     mmal_engine jcoder(MMAL_COMPONENT_DEFAULT_IMAGE_ENCODER);
-
-    jcoder.set_input_port(640,360,MMAL_ENCODING_I420);
-    jcoder.set_output_port(640,360,MMAL_ENCODING_JPEG);
-    
+    jcoder.set_video_input_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_I420);
+    jcoder.set_video_output_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_JPEG);
     jcoder.enable();
     
     Connection splitter_jcoder(&splitter,&jcoder);
-    
+    splitter_jcoder.create_input_pool();
+    splitter_jcoder.create_output_pool();
     splitter_jcoder.enable();
     
     getchar();
@@ -58,7 +57,7 @@
     Buffer jcoder_output((640*360*3)*.5); //(640x360x3)*.5
     
     
-    std::mutex m_jcoder;
+    std::mutex m_splitter_jcoder;
     while (framecount < max_frames) {
       AVFrame *cframe = camera1.run();
       framecount++;
@@ -69,9 +68,9 @@
       
       
       splitter_jcoder.run(&cframe,&jcoder_output);
-      //m_jcoder.lock();  //lock outbuffer then read
+      m_splitter_jcoder.lock();  //lock outbuffer then read
       
-      //m_jcoder.unlock();
+      m_splitter_jcoder.unlock();
       
       n = read(0, &c, 1);
         if (n > 0) break;

@@ -5,6 +5,10 @@
 
 #endif
 
+
+uint16_t ffmpeg_camera::get_width(){ return video_dec_ctx->width; };
+uint16_t ffmpeg_camera::get_height(){ return video_dec_ctx->height; };										  
+
 uint8_t ffmpeg_camera::initialize(){
 	
 	if (ctype==0) {
@@ -51,7 +55,8 @@ uint8_t ffmpeg_camera::initialize(){
             fprintf(stderr, "Failed to copy codec parameters to codec context\n");
             return ret;
         }
-        dec_ctx->pix_fmt=AV_PIX_FMT_YUV420P;
+        dec_ctx->pix_fmt=AV_PIX_FMT_YUV420P; //FIXME, don't know if this does anything
+        
 
          if ( (dec = avcodec_find_decoder_by_name("h264_mmal")) == NULL ) {
                fprintf(stderr, "Can't find codec for video stream");
@@ -75,7 +80,6 @@ uint8_t ffmpeg_camera::initialize(){
         fprintf(stderr,"Width: %d\n", video_dec_ctx->width);
         fprintf(stderr,"Height: %d\n", video_dec_ctx->height);
         
-	
 	    av_dump_format(fmt_ctx, 0, src_filename, 0);
 
         if (!video_stream) {
@@ -90,14 +94,142 @@ uint8_t ffmpeg_camera::initialize(){
           fprintf(stderr, "Could not allocate frame\n");
           ret = AVERROR(ENOMEM);
         }
+        
+        //FIXME, START: below code for testing if frames are being captured properly by libavcodec
+        //The swscale routine was necessary to save to file using SaveFrame
+        pFrameRGB=av_frame_alloc();
+        if (!pFrameRGB) {
+          fprintf(stderr, "Could not allocate pframe\n");
+          ret = AVERROR(ENOMEM);
+        }
+        
+        // Determine required buffer size and allocate buffer
+		numBytes=av_image_get_buffer_size(AV_PIX_FMT_RGB24, video_dec_ctx->width, video_dec_ctx->height, 32);
+    	      
+        rbuffer=(uint8_t *)av_malloc(numBytes*sizeof(uint8_t));
+        
+        // initialize SWS context for software scaling
+        sws_ctx = sws_getContext(video_dec_ctx->width,
+			   video_dec_ctx->height,
+			   video_dec_ctx->pix_fmt,
+			   video_dec_ctx->width,
+			   video_dec_ctx->height,
+			   AV_PIX_FMT_RGB24,
+			   SWS_BILINEAR,
+			   NULL,
+			   NULL,
+			   NULL
+			   );
 
 	
-}
+        } 
+
+       // Assign appropriate parts of buffer to image planes in pFrameRGB
+       // Note that pFrameRGB is an AVFrame, but AVFrame is a superset
+       // of AVPicture
+		 
+	   av_image_fill_arrays(pFrameRGB->data, pFrameRGB->linesize,
+            rbuffer, AV_PIX_FMT_RGB24, video_dec_ctx->width, video_dec_ctx->height, 1);
+       //FIXME, END   
+       
+       //FIXME, START : JPEG writing codec
+       jpegCodec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
+       if (!jpegCodec) {
+         return -1;
+       }
+       jpegContext = avcodec_alloc_context3(jpegCodec);
+       if (!jpegContext) {
+         return -1;
+       }
+
+       //jpegContext->pix_fmt = video_dec_ctx->pix_fmt;
+       jpegContext->pix_fmt = AV_PIX_FMT_YUVJ420P;
+       jpegContext->time_base = video_dec_ctx->time_base;
+       jpegContext->height = video_dec_ctx->height;
+       jpegContext->width = video_dec_ctx->width;
+
+       if (avcodec_open2(jpegContext, jpegCodec, NULL) < 0) {
+          return -1;
+       }
+       //FIXME, END  
+
 return ret;
 
 };
 
-	
+//This requires swscale conversion to RGB first
+void ffmpeg_camera::Save_PPM(AVFrame *pFrame, int iFrame)
+ {
+     FILE *pFile;
+     char szFilename[32];
+     int  y;
+     
+     sws_scale(sws_ctx, (uint8_t const * const *)pFrame->data,
+		  pFrame->linesize, 0, video_dec_ctx->height,
+		  pFrameRGB->data, pFrameRGB->linesize);
+
+     // Open file
+     sprintf(szFilename, "frame%d.ppm", iFrame);
+     //sprintf(szFilename, "frame.ppm", iFrame); //FIXME, just need one frame 
+     pFile=fopen(szFilename, "wb");
+     if(pFile==NULL)
+         return;
+
+     // Write header
+     fprintf(pFile, "P6\n%d %d\n255\n", video_dec_ctx->width, video_dec_ctx->height);
+
+     // Write pixel data
+       for(y=0; y<video_dec_ctx->height; y++)
+         fwrite(pFrameRGB->data[0]+y*pFrameRGB->linesize[0], 1, video_dec_ctx->width*3, pFile);
+          
+          
+
+     // Close file
+     fclose(pFile);
+ }
+
+void ffmpeg_camera::Save_JPEG(AVFrame *pFrame, int FrameNo) {
+    
+    FILE *JPEGFile;
+    char JPEGFName[256];
+
+    AVPacket packet = { 0 };
+    av_init_packet(&packet);
+  
+
+    int packetcomplete=0;
+    int ret=0;
+    
+    while (!packetcomplete) {
+		//fprintf(stderr, "Encoding");
+		ret = avcodec_send_frame(jpegContext, pFrame); 
+      
+        if (ret < 0) {
+            //std::cout << "Error sending frame " << std::endl;
+            continue;
+        }
+    
+        avcodec_receive_packet(jpegContext, &packet); 
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+             continue;
+        } 
+        if (ret<0) {
+            //std::cout << "Error receiving packet" << std::endl;
+            continue;
+        }
+    packetcomplete=1;
+    }
+    	
+    //sprintf(JPEGFName, "frame%d.jpg", FrameNo);
+    sprintf(JPEGFName, "frame.jpg", FrameNo);  //just need one 
+    JPEGFile = fopen(JPEGFName, "wb");
+    fwrite(packet.data, 1, packet.size, JPEGFile);
+    fclose(JPEGFile);
+
+    av_packet_unref(&packet);
+    
+    //return 0;
+}
 
 ffmpeg_camera::ffmpeg_camera(const uint8_t ctype, const char *src_filename):ctype(ctype), src_filename(src_filename){
 	initialize();
@@ -117,6 +249,19 @@ ffmpeg_camera::~ffmpeg_camera(){
       avformat_close_input(&fmt_ctx);
     if (frame)
       av_frame_free(&frame);
+      
+    //FIXME, only used for YUV420 to RGB24 conversion for writing PPM files  
+    if (pFrameRGB)
+      av_frame_free(&pFrameRGB);
+    if (rbuffer)
+      free(rbuffer);
+    if (sws_ctx)
+    sws_freeContext(sws_ctx);
+      
+    //FIXME, only used for JPEG writing
+    if (jpegContext)
+    avcodec_free_context(&jpegContext);  
+      
 };
 
 uint8_t ffmpeg_camera::decode_packet(const AVPacket *ipkt){
@@ -135,7 +280,7 @@ uint8_t ffmpeg_camera::decode_packet(const AVPacket *ipkt){
              continue;
         } 
         if (ret<0) {
-            //std::cout << "Error receiving packet" << std::endl;
+            //std::cout << "Error receiving frame" << std::endl;
             continue;
         }
     framecomplete=1;
@@ -159,4 +304,5 @@ AVFrame * ffmpeg_camera::run(){
         return frame;    
         
     }
+    return NULL;
 };

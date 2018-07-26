@@ -7,7 +7,7 @@ CC=g++
 IFLAGS = -I/opt/vc/include -I/opt/vc/include/interface
 LFLAGS = -L/opt/vc/lib
 
-LIBAVFLAGS = -lavutil -lavformat -lavcodec
+LIBAVFLAGS = -lavutil -lavformat -lavcodec -lswscale
 LIBMMALFLAGS = -lmmal -lbcm_host -lmmal_core -lmmal_components -lmmal_util -lvcos 
 
 LDFLAGS =  $(LIBAVFLAGS) $(LIBMMALFLAGS)
@@ -23,7 +23,7 @@ _DEPS = ffmpeg_camera.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
 
-_OBJ = motion_vector.o ffmpeg_camera.o mmal_engine.o buffer.o connection.o
+_OBJ = main_template.o ffmpeg_camera.o mmal_engine.o buffer.o connection.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
@@ -34,9 +34,9 @@ $(ODIR)/%.o: $(SDIR)/%.cpp
 
 
 
-motion: $(OBJ)
+template: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 .PHONY: clean
 clean:
-	rm -f  $(ODIR)/*.o *~ motion* include/*.gch
+	rm -f  $(ODIR)/*.o *~ template* include/*.gch

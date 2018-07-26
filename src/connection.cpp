@@ -29,11 +29,7 @@ uint8_t Connection::enable(){
 	status =  mmal_connection_enable(connection);
 	CHECK_STATUS(status, "failed to enable connection");
 	if (input_port) {
-	input_pool = mmal_pool_create(input_port->buffer_num,
-                                  input_port->buffer_size);
-    
-    //Enable the input port and assign an input context
-    input_port->userdata = (struct MMAL_PORT_USERDATA_T *)&contexti;
+	
     
     status = mmal_port_enable(input_port, input_callback); 
     CHECK_STATUS(status, "failed to enable connection input port");
@@ -42,6 +38,24 @@ uint8_t Connection::enable(){
     }
     
     if (output_port) {
+    
+    //Enable the output port for resizerd and assign an output context
+    status = mmal_port_enable(output_port, output_callback);
+    CHECK_STATUS(status, "failed to enable connection output port");
+    }
+    
+ 
+	
+	buffsize=av_image_get_buffer_size(AV_PIX_FMT_YUV420P, input_engine->width, input_engine->height, 1);
+	
+	fprintf(stderr, "Constructing mmal connection %s ******************\n", connection->name);
+	return status;
+};
+
+
+uint8_t Connection::create_output_pool(){
+	
+	   if (output_port) {
     output_pool = mmal_pool_create(output_port->buffer_num,
                                    output_port->buffer_size);
 
@@ -52,23 +66,24 @@ uint8_t Connection::enable(){
     // Store a reference to our context in each port (will be used during callbacks) 
     output_port->userdata = (struct MMAL_PORT_USERDATA_T *)&contexto; 
     
-    //Enable the output port for resizerd and assign an output context
-    status = mmal_port_enable(output_port, output_callback);
-    CHECK_STATUS(status, "failed to enable connection output port");
-    }
-    
-    
-    
-    
+}
     
 	
 	
-	buffsize=av_image_get_buffer_size(AV_PIX_FMT_YUV420P, input_engine->width, input_engine->height, 1);
-	
-	fprintf(stderr, "Constructing mmal connection %s ******************\n", connection->name);
-	return status;
-};
+}	
 
+uint8_t Connection::create_input_pool(){
+	if (input_port) {
+	input_pool = mmal_pool_create(input_port->buffer_num,
+                                  input_port->buffer_size);
+    
+    //Enable the input port and assign an input context
+    input_port->userdata = (struct MMAL_PORT_USERDATA_T *)&contexti;
+    
+    
+    
+    }
+}	
 
 uint8_t Connection::run(AVFrame **frame, Buffer *outbuf){
 	             MMAL_BUFFER_HEADER_T *buffer;
@@ -95,14 +110,15 @@ uint8_t Connection::run(AVFrame **frame, Buffer *outbuf){
 					mmal_buffer_header_mem_lock(buffer);
                     fprintf(stderr, "%s receiving %d bytes <<<<< frame\n", output_port->name, buffer->length);
          
-                    memset(outbuf->data,0,outbuf->length);
-                    memcpy(outbuf->data,buffer->data,buffer->length);
-                    outbuf->length=buffer->length;
-                    outbuf->flags=buffer->flags;
-                    outbuf->cmd=buffer->cmd;
-                    outbuf->pts=buffer->pts;
-                    outbuf->dts=buffer->dts;
-         
+                    if (outbuf) {
+                      memset(outbuf->data,0,outbuf->length);
+                      memcpy(outbuf->data,buffer->data,buffer->length);
+                      outbuf->length=buffer->length;
+                      outbuf->flags=buffer->flags;
+                      outbuf->cmd=buffer->cmd;
+                      outbuf->pts=buffer->pts;
+                      outbuf->dts=buffer->dts;
+				    }
                     mmal_buffer_header_mem_unlock(buffer); 
                     mmal_buffer_header_release(buffer);  
 					  
