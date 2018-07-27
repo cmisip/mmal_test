@@ -169,8 +169,8 @@ void ffmpeg_camera::Save_PPM(AVFrame *pFrame, int iFrame)
 		  pFrameRGB->data, pFrameRGB->linesize);
 
      // Open file
-     sprintf(szFilename, "frame%d.ppm", iFrame);
-     //sprintf(szFilename, "frame.ppm", iFrame); //FIXME, just need one frame 
+     //sprintf(szFilename, "frame%d.ppm", iFrame);
+     sprintf(szFilename, "frame.ppm", iFrame); //FIXME, just need one frame for testing
      pFile=fopen(szFilename, "wb");
      if(pFile==NULL)
          return;
@@ -188,7 +188,9 @@ void ffmpeg_camera::Save_PPM(AVFrame *pFrame, int iFrame)
      fclose(pFile);
  }
 
-void ffmpeg_camera::Save_JPEG(AVFrame *pFrame, int FrameNo) {
+
+
+uint8_t ffmpeg_camera::Save_JPEG(AVFrame *pFrame, int FrameNo) {
     
     FILE *JPEGFile;
     char JPEGFName[256];
@@ -221,14 +223,14 @@ void ffmpeg_camera::Save_JPEG(AVFrame *pFrame, int FrameNo) {
     }
     	
     //sprintf(JPEGFName, "frame%d.jpg", FrameNo);
-    sprintf(JPEGFName, "frame.jpg", FrameNo);  //just need one 
+    sprintf(JPEGFName, "frame.jpg", FrameNo);  //just need one frame for testing
     JPEGFile = fopen(JPEGFName, "wb");
     fwrite(packet.data, 1, packet.size, JPEGFile);
     fclose(JPEGFile);
 
     av_packet_unref(&packet);
     
-    //return 0;
+    return 0;
 }
 
 ffmpeg_camera::ffmpeg_camera(const uint8_t ctype, const char *src_filename):ctype(ctype), src_filename(src_filename){

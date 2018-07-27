@@ -21,7 +21,7 @@
       fprintf(stderr, "Frame number %d\n",framecount);
       
       //save as PPM
-      //camera1.Save_PPM(cframe,framecount);
+      camera1.Save_PPM(cframe,framecount);
       //save as JPEG
       camera1.Save_JPEG(cframe,framecount);
       n = read(0, &c, 1);

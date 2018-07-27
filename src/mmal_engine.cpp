@@ -304,7 +304,7 @@ uint8_t mmal_engine::run(AVFrame **frame, Buffer *outbuf)
       {
          mmal_buffer_header_mem_lock(buffer);
          fprintf(stderr, "%s receiving %d bytes <<<<< frame\n", engine->output[0]->name, buffer->length);
-         
+         uint16_t i=0;
          if (outbuf) {
            memset(outbuf->data,0,outbuf->length);
            memcpy(outbuf->data,buffer->data,buffer->length);
@@ -313,6 +313,16 @@ uint8_t mmal_engine::run(AVFrame **frame, Buffer *outbuf)
            outbuf->cmd=buffer->cmd;
            outbuf->pts=buffer->pts;
            outbuf->dts=buffer->dts;
+           
+           /*for (i=0; i<height; i++); {
+              memcpy(outbuf->data+(i*VCOS_ALIGN_UP(width,32)),buffer->data,width);
+	       }
+	       //outbuf->length=(width*height*12)/8;
+	       outbuf->length=(width*height*24)/8;
+           outbuf->flags=buffer->flags;
+           outbuf->cmd=buffer->cmd;
+           outbuf->pts=buffer->pts;
+           outbuf->dts=buffer->dts;*/
          }
          mmal_buffer_header_mem_unlock(buffer); 
          mmal_buffer_header_release(buffer);

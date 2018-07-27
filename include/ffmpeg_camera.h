@@ -12,6 +12,12 @@ extern "C" {
 
 #include <stdio.h>
 #include <sys/types.h>
+#ifndef obuffer
+#define obuffer
+
+#include "buffer.h"
+
+#endif
 
 class ffmpeg_camera {
 
@@ -26,7 +32,7 @@ AVFrame *  run();
 uint8_t decode_packet(const AVPacket *ipkt);
 uint8_t save_frame_as_jpeg(AVFrame *pFrame, int FrameNo);
 void Save_PPM(AVFrame *pFrame, int iFrame);
-void Save_JPEG(AVFrame *pFrame, int iFrame);
+uint8_t Save_JPEG(AVFrame *pFrame, int iFrame);
 uint16_t get_width();
 uint16_t get_height();
 
