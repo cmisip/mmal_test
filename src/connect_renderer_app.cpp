@@ -11,10 +11,10 @@
     
     
     //Resizer
-    //mmal_engine resizer("vc.ril.resize");
-    mmal_engine resizer(MMAL_COMPONENT_DEFAULT_VIDEO_SPLITTER);
+    mmal_engine resizer("vc.ril.isp"); //no green band //no green band at the bottom
+    //mmal_engine resizer(MMAL_COMPONENT_DEFAULT_VIDEO_SPLITTER); //green band at bottom
     resizer.set_video_input_port(camera.get_width(),camera.get_height(),MMAL_ENCODING_I420);
-    resizer.set_video_output_port(camera.get_width(),camera.get_height(),MMAL_ENCODING_RGB24);
+    resizer.set_video_output_port(640,360,MMAL_ENCODING_I420);
     
     resizer.enable();
     
@@ -23,9 +23,9 @@
     renderer.set_video_input_port(640,360,MMAL_ENCODING_I420);
     renderer.create_input_pool();
     
+    
+    
     renderer.enable();
-    
-    
     
 
     Connection resizer_renderer(&resizer,&renderer);

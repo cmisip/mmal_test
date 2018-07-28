@@ -18,16 +18,18 @@
     
     
     //RGB encoder
-    mmal_engine splitter(MMAL_COMPONENT_DEFAULT_VIDEO_SPLITTER);
+    mmal_engine splitter("vc.ril.isp");
+    //mmal_engine splitter(MMAL_COMPONENT_DEFAULT_VIDEO_SPLITTER);
   
     splitter.set_video_input_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_I420);
-    splitter.set_video_output_port(704,480,MMAL_ENCODING_RGB24);
+    splitter.set_video_output_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_I420);
     
     splitter.enable_video_input_port();
     splitter.enable_video_output_port();
     
-    splitter.create_output_pool();
+    
     splitter.create_input_pool();
+    splitter.create_output_pool();
     
     splitter.enable();
     
@@ -77,7 +79,7 @@
       //JPEGFile = fopen(JPEGFName, "wb");
       //fwrite(jcoder_output.data, 1, jcoder_output.length, JPEGFile);
       //fclose(JPEGFile);
-      fprintf(stderr, "Cropped to %d bytes", jcoder_output.length);
+      //fprintf(stderr, "Cropped to %d bytes", jcoder_output.length);
       m_jcoder.unlock();
       
       n = read(0, &c, 1);

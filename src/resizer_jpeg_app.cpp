@@ -27,9 +27,8 @@
     //RGB encoder
     mmal_engine resizer("vc.ril.isp");
   
-    //resizer.set_video_input_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_I420);
-    resizer.set_video_input_port(704,480,MMAL_ENCODING_I420);
-    resizer.set_video_output_port(640,368,MMAL_ENCODING_I420);
+    resizer.set_video_input_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_I420);
+    resizer.set_video_output_port(640,360,MMAL_ENCODING_RGB24);
     
     
     resizer.enable();
@@ -37,8 +36,8 @@
     //JPEG encoder
     mmal_engine jcoder(MMAL_COMPONENT_DEFAULT_IMAGE_ENCODER);
 
-    jcoder.set_video_input_port(640,368,MMAL_ENCODING_I420);
-    jcoder.set_video_output_port(640,368,MMAL_ENCODING_JPEG);
+    jcoder.set_video_input_port(640,360,MMAL_ENCODING_I420);
+    jcoder.set_video_output_port(640,360,MMAL_ENCODING_JPEG);
 
     jcoder.enable();
     

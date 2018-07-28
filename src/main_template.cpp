@@ -47,7 +47,7 @@ and then sending to three components in parallel: h264 encoder, splitter (as rbg
 /*Example connection to the renderer component which does not have any output ports. Default settings for the 
  * output port of the renderer are in mmal_engine.cpp with the variable type MMAL_DISPLAYREGION_T.  */
 
-//#include "connect_renderer_app.cpp"             //WORKING
+#include "connect_renderer_app.cpp"             //WORKING
 
 /*Example to save avcodec frame data to jpeg and PPM. */
 
@@ -63,7 +63,7 @@ and then sending to three components in parallel: h264 encoder, splitter (as rbg
 
 /*Example to change the video resolution of a frame and then send to the jpeg encoder. */
 
-//#include "resizer_jpeg_app.cpp"                 //NOT WORKING, resizer fails to send back buffers if the output port dimensions are different from the input port */
+//#include "resizer_jpeg_app.cpp"                 //WORKING, 
 
 
 

@@ -114,8 +114,8 @@ uint8_t mmal_engine::set_video_output_port(uint16_t owidth, uint16_t oheight, MM
    
    format_out->encoding = oformat;
    
-   width=owidth;
-   height=oheight;
+   //width=owidth;
+   //height=oheight;
   
    //format_out->es->video.width = VCOS_ALIGN_UP(owidth, 32);
    //format_out->es->video.height = VCOS_ALIGN_UP(oheight, 16);
@@ -207,9 +207,8 @@ uint8_t mmal_engine::create_output_pool(){
 uint8_t mmal_engine::enable() {
    
    //special cases 
-     if (strcmp(name, "vc.ril.video_render") == 0) {
-		//MMAL_PORT_T *preview_port = NULL;
-        //preview_port = engine->input[0];
+    /* if (strcmp(name, "vc.ril.video_render") == 0) {
+		
 
         //MMAL_DISPLAYREGION_T param;
         param.hdr.id = MMAL_PARAMETER_DISPLAYREGION;
@@ -221,11 +220,15 @@ uint8_t mmal_engine::enable() {
         param.set |= MMAL_DISPLAY_SET_ALPHA;
         param.alpha = 255;
       
-        param.fullscreen = 1;
+        param.fullscreen = 0;
+        param.dest_rect.x=10;
+        param.dest_rect.y=10;
+        param.dest_rect.width=640;
+        param.dest_rect.height=480;
     
         mmal_port_parameter_set(engine->input[0], &param.hdr); 
 	 } 	 
-   
+   */
    
    status = mmal_component_enable(engine);
    CHECK_STATUS(status, "failed to enable component");
@@ -233,9 +236,10 @@ uint8_t mmal_engine::enable() {
   
    
    
-   
-   buffsize=av_image_get_buffer_size(AV_PIX_FMT_YUV420P, VCOS_ALIGN_UP(width,32), VCOS_ALIGN_UP(height,16), 1);
-    
+   //buffsize is used for sending avcodec frame to mmal so needs to reflect the original video size
+   //buffsize=av_image_get_buffer_size(AV_PIX_FMT_YUV420P, VCOS_ALIGN_UP(width,32), VCOS_ALIGN_UP(height,16), 1);
+   buffsize=av_image_get_buffer_size(AV_PIX_FMT_YUV420P, width, height, 1);
+     
    fprintf(stderr, "Constructing mmal engine %s ******************\n", name);
    
    
