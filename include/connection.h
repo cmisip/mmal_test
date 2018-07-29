@@ -29,17 +29,17 @@ uint32_t buffsize=0;
 uint16_t width=0;
 uint16_t height=0;
 
-mmal_engine *input_engine = NULL;
-mmal_engine *output_engine = NULL;
+mmal_engine *input_engine = 0;
+mmal_engine *output_engine = 0;
 
-MMAL_PORT_T *input_port=NULL;
-MMAL_PORT_T *output_port=NULL;
+MMAL_PORT_T *input_port=0;
+MMAL_PORT_T *output_port=0;
 
-MMAL_PORT_T *outconnect_port=NULL;
-MMAL_PORT_T *inconnect_port=NULL;
+MMAL_PORT_T *outconnect_port=0;
+MMAL_PORT_T *inconnect_port=0;
 
-MMAL_POOL_T *input_pool=NULL; 
-MMAL_POOL_T *output_pool=NULL;   
+MMAL_POOL_T *input_pool=0; 
+MMAL_POOL_T *output_pool=0;   
 
 private:
 

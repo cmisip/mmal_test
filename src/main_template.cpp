@@ -42,7 +42,7 @@ and then sending to three components in parallel: h264 encoder, splitter (as rbg
  
 /*Example connecting two components to create one pipeline" */
  
-#include "connections_create_app.cpp"           //WORKING
+//#include "connections_create_app.cpp"           //WORKING
 
 /*Example connection to the renderer component which does not have any output ports. Default settings for the 
  * output port of the renderer are in mmal_engine.cpp with the variable type MMAL_DISPLAYREGION_T.  */
@@ -65,6 +65,10 @@ and then sending to three components in parallel: h264 encoder, splitter (as rbg
 
 //#include "resizer_jpeg_app.cpp"                 //WORKING, 
 
+/*Example to chain two connections         
+#include "connect_connections_app.cpp"            //WORKING,
+
 //#include "h264_writer_app.cpp"
+
 
 };

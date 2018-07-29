@@ -106,6 +106,8 @@ uint8_t Connection::run(AVFrame **frame, Buffer *outbuf){
 			     }
 			     
 			     if (output_port) {
+					 fprintf(stderr, "OUTPUT----------------------------------------------");
+					 
                   while ((buffer = mmal_queue_get(contexto.queue)) != NULL) {
 					mmal_buffer_header_mem_lock(buffer);
                     fprintf(stderr, "%s receiving %d bytes <<<<< frame\n", output_port->name, buffer->length);
@@ -145,24 +147,72 @@ Connection::Connection(mmal_engine *engine1, mmal_engine *engine2):input_engine(
 //Also, the buffers will be sent to engine1 input port and retrieved from engine 2 output port ( if it has one
 //as some components dont have outputs such as the renderer).
 
-    if (engine1->engine->input)
-      input_port = engine1->engine->input[0];
-    if (engine2->engine->output)
-      output_port = engine2->engine->output[0];
-
-    if (engine1->engine->output)
-      outconnect_port = engine1->engine->output[0];
-    if (engine2->engine->input)
-      inconnect_port = engine2->engine->input[0];
-      
 //I think this will do a format copy between outconnect_port and inconnect_port and then commit and enable
-//So both connect ports must be disabled first      
+//So both connect ports must be disabled first   
+//It will also try to enable the input port of first connection and output port of second connection so if
+//those are enabled, they need to be disabled first 
+    if (input_engine->engine->input) {
+      input_port = input_engine->engine->input[0];
+      if (input_port->is_enabled)
+        mmal_port_disable(input_port);
+    }  
+    if (output_engine->engine->output) {
+      output_port = output_engine->engine->output[0];
+      if (output_port->is_enabled)
+        mmal_port_disable(output_port);
+    }  
+    if (input_engine->engine->output) {
+      outconnect_port = input_engine->engine->output[0];
+      if (outconnect_port->is_enabled)
+        mmal_port_disable(outconnect_port);
+    }  
+    if (output_engine->engine->input) {
+      inconnect_port = output_engine->engine->input[0]; 
+      if (inconnect_port->is_enabled)
+        mmal_port_disable(inconnect_port);
+    }  
+
+  
     connect_ports(outconnect_port,inconnect_port, &connection);
+    
+    //FIXME, probably should also need to destroy the input and output pool of the individual engines
     
     
 };
 
-Connection::Connection(Connection *connection1, Connection *connection2){};
+Connection::Connection(Connection *connection1, Connection *connection2){
+	input_engine=connection1->input_engine;
+	output_engine=connection2->output_engine;
+	if ( connection1->input_engine->input_port ) 
+	if (connection1->input_engine->input_port->is_enabled) {
+      input_port = connection1->input_engine->input_port;
+      mmal_port_disable(input_port);
+    } 
+    
+    if ( connection2->output_engine->output_port ) 
+    if (connection2->output_engine->output_port->is_enabled) {
+      output_port = connection2->output_engine->output_port;
+      mmal_port_disable(output_port);
+    }  
+    if ( connection1->output_engine->output_port ) 
+    if (connection1->output_engine->output_port->is_enabled) {
+      outconnect_port = connection1->output_engine->output_port;
+      mmal_port_disable(outconnect_port);
+    }  
+    if ( connection2->output_engine->input_port ) 
+    if (connection2->output_engine->input_port->is_enabled) {
+      inconnect_port = connection2->input_engine->input_port;  
+      mmal_port_disable(inconnect_port);
+    }  
+    //These are valid connections already so the outconnect port and inconnect port are enabled.
+    //Disable them here before connecting  
+    
+      
+    connect_ports(outconnect_port,inconnect_port, &connection);
+    
+        //FIXME, probably should also need to destroy the input and output pool of the individual engines
+        //FIXME, probably should also need to destory the input and output pool of the individual connections
+	};
 
 Connection::~Connection(){
 	fprintf(stderr,"Destroying connection %s\n", connection->out->name);

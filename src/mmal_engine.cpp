@@ -76,10 +76,10 @@ uint8_t mmal_engine::set_video_input_port(uint16_t iwidth, uint16_t iheight, MMA
    
    width=iwidth;
    height=iheight;
-   //format_in->es->video.width = VCOS_ALIGN_UP(iwidth, 32);
-   //format_in->es->video.height = VCOS_ALIGN_UP(iheight,16);
-   format_in->es->video.width = iwidth;
-   format_in->es->video.height = iheight;
+   format_in->es->video.width = VCOS_ALIGN_UP(iwidth, 32);
+   format_in->es->video.height = VCOS_ALIGN_UP(iheight,16);
+   //format_in->es->video.width = iwidth;
+   //format_in->es->video.height = iheight;
    
    
    format_in->es->video.frame_rate.num = 30;
