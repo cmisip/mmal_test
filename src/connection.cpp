@@ -137,15 +137,32 @@ uint8_t Connection::run(AVFrame **frame, Buffer *outbuf){
 };	
 
 Connection::Connection(mmal_engine *engine1, mmal_engine *engine2):input_engine(engine1),output_engine(engine2){
+//Connect output port of engine1 to input port of engine 2
+//However, input port here is the input of the connection (engine 1 input port ) and 
+//the output port here is the output of the connection ( engine 2 output port )
 
-    connect_ports(engine1->engine->output[0],engine2->engine->input[0], &connection);
-    
+//For this connection to work, engine1 must have an output port and engine 2 must have an input port
+//Also, the buffers will be sent to engine1 input port and retrieved from engine 2 output port ( if it has one
+//as some components dont have outputs such as the renderer).
+
     if (engine1->engine->input)
-    input_port = engine1->engine->input[0];
+      input_port = engine1->engine->input[0];
     if (engine2->engine->output)
-    output_port = engine2->engine->output[0];
+      output_port = engine2->engine->output[0];
+
+    if (engine1->engine->output)
+      outconnect_port = engine1->engine->output[0];
+    if (engine2->engine->input)
+      inconnect_port = engine2->engine->input[0];
+      
+//I think this will do a format copy between outconnect_port and inconnect_port and then commit and enable
+//So both connect ports must be disabled first      
+    connect_ports(outconnect_port,inconnect_port, &connection);
+    
     
 };
+
+Connection::Connection(Connection *connection1, Connection *connection2){};
 
 Connection::~Connection(){
 	fprintf(stderr,"Destroying connection %s\n", connection->out->name);

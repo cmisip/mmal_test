@@ -292,6 +292,8 @@ uint8_t mmal_engine::run(AVFrame **frame, Buffer *outbuf)
          av_image_copy_to_buffer(buffer->data, buffsize, (const uint8_t **)(*frame)->data, (*frame)->linesize,
                                 AV_PIX_FMT_YUV420P, (*frame)->width, (*frame)->height, 1);
          buffer->length=buffsize;
+         buffer->pts=(*frame)->pts;
+         buffer->dts=(*frame)->pts;
          mmal_buffer_header_mem_unlock(buffer);
          
             
