@@ -23,7 +23,7 @@ _DEPS = ffmpeg_camera.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
 
-_OBJ = main_template.o ffmpeg_camera.o mmal_engine.o buffer.o connection.o
+_OBJ = main_template.o ffmpeg_camera.o mmal_engine.o buffer.o connection.o videowriter.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 

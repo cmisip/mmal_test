@@ -1,4 +1,13 @@
+
+
+#ifndef buffer
+#define buffer
+
+
 #include "buffer.h"
+
+#endif
+
 #include <cstdlib>
                                    
 Buffer::Buffer(uint32_t size){
