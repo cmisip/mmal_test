@@ -19,11 +19,11 @@ CFLAGS=-I$(IDIR)  -std=gnu++11 $(IFLAGS) $(LFLAGS)
 
 
 
-_DEPS = ffmpeg_camera.h
+_DEPS = ffmpeg_camera.h mmal_engine.h buffer.h connection.h videocapture.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
 
-_OBJ = main_template.o ffmpeg_camera.o mmal_engine.o buffer.o connection.o
+_OBJ = main_template.o ffmpeg_camera.o mmal_engine.o buffer.o connection.o videocapture.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
