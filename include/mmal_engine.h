@@ -5,6 +5,9 @@
 #include "interface/mmal/util/mmal_default_components.h"
 #include "interface/mmal/util/mmal_util_params.h"
 #include "interface/vcos/vcos.h"
+#include "containers.h"
+#include "containers_codecs.h"
+//#include "containers/core/containers_utils.h"
 
 #include <stdio.h>
 

@@ -65,10 +65,12 @@ and then sending to three components in parallel: h264 encoder, splitter (as rbg
 
 //#include "resizer_jpeg_app.cpp"                 //WORKING, 
 
-/*Example to chain two connections         
-#include "connect_connections_app.cpp"            //WORKING,
+/*Example to chain two connections   */      
+//#include "connect_connections_app.cpp"            //WORKING,
 
 //#include "h264_writer_app.cpp"
+
+#include "avcodec_to_writer_app.cpp"
 
 
 };

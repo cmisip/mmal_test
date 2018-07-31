@@ -4,7 +4,7 @@ SDIR =src
 
 CC=g++
 
-IFLAGS = -I/opt/vc/include -I/opt/vc/include/interface
+IFLAGS = -I/opt/vc/include -I/opt/vc/include/interface -I/opt/vc/include/containers
 LFLAGS = -L/opt/vc/lib
 
 LIBAVFLAGS = -lavutil -lavformat -lavcodec -lswscale
