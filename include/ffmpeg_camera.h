@@ -4,6 +4,7 @@ extern "C" {
 #include <libavutil/motion_vector.h>
 #include <libavutil/imgutils.h>
 #include <libavformat/avformat.h>
+#include <libavformat/avio.h>
 #include "libswscale/swscale.h"
 #include <libavutil/frame.h>
 #include "libavformat/avformat.h"
@@ -12,12 +13,16 @@ extern "C" {
 
 #include <stdio.h>
 #include <sys/types.h>
+#include <string>
+
 #ifndef obuffer
 #define obuffer
 
 #include "buffer.h"
 
 #endif
+
+
 
 class ffmpeg_camera {
 
@@ -36,6 +41,10 @@ uint8_t Save_JPEG(AVFrame *pFrame, int iFrame);
 uint16_t get_width();
 uint16_t get_height();
 
+void Init_MP4(const char* filename);
+void Save_MP4(Buffer *buff, int timeStampValue);
+void Close_MP4();
+
 
 
 private:
@@ -49,6 +58,8 @@ AVCodecContext *video_dec_ctx = NULL;
 AVStream *video_stream = NULL;
 AVCodec *dec = NULL;
 AVCodecContext *dec_ctx = NULL;
+AVCodec* outCodec;
+AVStream* outputStream;
 
 
 //FIXME, START : Only used to test if libavcodec is capturing frames properly
@@ -64,9 +75,13 @@ AVCodecContext *jpegContext = NULL;
 AVCodec *jpegCodec = NULL;
 //FIXME, END :
 
+AVOutputFormat *outputFormat;
+AVFormatContext *outputFormatCtx;
+
 int video_stream_idx = -1;
 AVFrame *frame = NULL;
 AVPacket pkt = { 0 };
+AVPacket opkt = { 0 };
 
 
 

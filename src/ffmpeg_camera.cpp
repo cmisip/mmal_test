@@ -94,6 +94,8 @@ uint8_t ffmpeg_camera::initialize(){
           fprintf(stderr, "Could not allocate frame\n");
           ret = AVERROR(ENOMEM);
         }
+
+        
         
         //FIXME, START: below code for testing if frames are being captured properly by libavcodec
         //The swscale routine was necessary to save to file using SaveFrame
@@ -156,6 +158,89 @@ uint8_t ffmpeg_camera::initialize(){
 return ret;
 
 };
+
+void ffmpeg_camera::Init_MP4(const char* filename){
+          
+        //Setup outputformatctx for mp4 file output
+        //initialize output file
+	    //std::string filename = "cameraRecorder.mp4";
+	    
+        outputFormat = av_guess_format("mp4",filename,NULL);
+        if(!outputFormat)
+          fprintf(stderr,"ERROR av guess format\n");
+
+        if(avformat_alloc_output_context2(&outputFormatCtx,outputFormat,NULL,filename) < 0 ){
+          fprintf(stderr,"Error avformat_alloc_output_context2 \n");
+          ret = 1;
+        }
+
+        if(!outputFormatCtx){
+          fprintf(stderr,"Error alloc output 2 \n");
+          ret = 1;
+        }
+        outCodec = avcodec_find_encoder(AV_CODEC_ID_H264);
+        if( !outCodec ){
+          fprintf(stderr,"Error avcodec_find_encoder \n");
+          ret = 1;
+        }
+
+        outputStream = avformat_new_stream(outputFormatCtx,outCodec);
+          if(!outputStream){
+          fprintf(stderr,"Error outputStream\n");
+          ret = 1;
+        }
+        
+        outputStream->codecpar->codec_id = AV_CODEC_ID_H264;
+        outputStream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
+        outputStream->codecpar->width = st->codecpar->width;
+        outputStream->codecpar->height = st->codecpar->height;
+        outputStream->codecpar->format = AV_PIX_FMT_YUV420P;
+        outputStream->codecpar->bit_rate = 4000000;
+        outputStream->time_base = AVRational{1,30};
+        
+        
+        if ( !(outputFormatCtx->flags & AVFMT_NOFILE) )
+          if( avio_open2(&outputFormatCtx->pb , filename , AVIO_FLAG_WRITE ,NULL, NULL) < 0 ){
+            fprintf(stderr,"Error avio_open2");
+            ret = 1;
+          }
+
+        if(avformat_write_header(outputFormatCtx , NULL) < 0){
+            fprintf(stderr,"Error avformat_write_header");
+            ret = 1;
+        }
+    
+        fprintf(stderr,"OUTPUT FORMAT-------------------------------");
+        av_dump_format(outputFormatCtx , 0 ,filename ,1);
+        
+        av_init_packet(&pkt);
+        	
+}	
+
+
+void ffmpeg_camera::Save_MP4(Buffer *buff, int timeStampValue){
+	    opkt.data=(uint8_t* )av_mallocz(buff->length);
+        memcpy(opkt.data,buff->data,buff->length);
+        opkt.size=buff->length;
+        
+
+	    AVRational time_base = outputStream->time_base;
+        opkt.pts = opkt.dts = timeStampValue++;
+        opkt.pts = av_rescale_q(opkt.pts, AVRational{1,30}, time_base);
+        opkt.dts = av_rescale_q(opkt.dts, AVRational{1,30}, time_base);
+        opkt.duration = av_rescale_q(1, AVRational{1,30}, time_base);
+        ret = av_write_frame(outputFormatCtx, &opkt);
+        if(ret < 0)
+        	fprintf(stderr, "Error write frame");
+        else
+            fprintf(stderr, "FFMPEG Successful WRITE --> ");
+}	
+
+void ffmpeg_camera::Close_MP4(){
+	ret = av_write_trailer(outputFormatCtx);
+    if(ret < 0 )
+    	fprintf(stderr,"Error write trailer");
+}	
 
 //This requires swscale conversion to RGB first
 void ffmpeg_camera::Save_PPM(AVFrame *pFrame, int iFrame)
@@ -241,6 +326,9 @@ ffmpeg_camera::ffmpeg_camera(const uint8_t ctype, const char *src_filename):ctyp
 ffmpeg_camera::~ffmpeg_camera(){
 	fprintf(stderr, "Destructing camera\n");
 	/* flush cached frames */
+	
+	av_packet_unref(&pkt);
+	av_packet_unref(&opkt);
     
     avformat_network_deinit();
     if (dec_ctx)
