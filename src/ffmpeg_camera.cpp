@@ -225,7 +225,7 @@ void ffmpeg_camera::Save_MP4(Buffer *buff, int timeStampValue){
         
 
 	    AVRational time_base = outputStream->time_base;
-        opkt.pts = opkt.dts = timeStampValue++;
+        opkt.pts = opkt.dts = timeStampValue;
         opkt.pts = av_rescale_q(opkt.pts, AVRational{1,30}, time_base);
         opkt.dts = av_rescale_q(opkt.dts, AVRational{1,30}, time_base);
         opkt.duration = av_rescale_q(1, AVRational{1,30}, time_base);

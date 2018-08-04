@@ -15,6 +15,8 @@
 
 #include <fcntl.h>
 #include <mutex>
+#include <iostream>
+#include <iomanip>
 
 
 //Add headers for specific applications
@@ -69,7 +71,7 @@ and then sending to three components in parallel: h264 encoder, splitter (as rbg
 
 //#include "connect_connections_app.cpp"          //WORKING,
 
-#include "h264_writer_app.cpp"                 //WORKING, with NOTES
+#include "h264_writer_app.cpp"                 //WORKING
 
 
 };

@@ -280,6 +280,8 @@ uint8_t mmal_engine::enable() {
    return status;
 	
 }		
+
+
 	
 uint8_t mmal_engine::run(AVFrame **frame, Buffer *outbuf)
 {   

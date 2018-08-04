@@ -24,9 +24,10 @@
       * think the payload is a complete NAL unit.  
       2. Only works with lower resolutions.  This could be due to the configured GPU mem.
       3. There might be other unforeseen interactions between avcodec and mmal.  Right now, mp4 writing is done
-      * by avcodec including the header info. 
-      4. When video is played with mplayer, every now and then there is "Error while decoding frame!",
-      * but there is no glitch in the playback. 
+      * by avcodec which writes the MP4 header info and trailing info. 
+      4. When video is played with mplayer, there is one "Error while decoding frame!" at 
+      * the beginning of the video but there is no glitch in the playback. I think this is due to the CONFIG buffer
+      * being written after the MP4 header but it is necessary to write this to create a playable file. 
       5. Only tested with rtsp stream at 320x192. 
    
     */
@@ -128,7 +129,7 @@
    
     camera1.Init_MP4("camcorder.mp4");  
     
-   
+    bool got_config=false;
     while (framecount < max_frames) {
       AVFrame *cframe = camera1.run();
       
@@ -144,24 +145,38 @@
       
       if (h264coder_output.flags & MMAL_BUFFER_HEADER_FLAG_CONFIG) {
        fprintf(stderr, "GOT HEADER %d \n", framecount);
-       //Not using, MP4 writer uses avcodec to write the header
-      
-      } 
+       //This is actually a NAL and is needed to be written only once after the MP4 header
+       
+       //Write out the bytes in the CONFIG BUFFER      
+       /*for (size_t i = 0; i != h264coder_output.length; ++i)
+         fprintf(stderr, "\\%02x", (unsigned char)h264coder_output.data[i]);
+       */
+       
+       if (!got_config) {
+         got_config=true;
+       } else 
+         goto end;
+       } 
+        
 	  
 	  if (h264coder_output.flags & MMAL_BUFFER_HEADER_FLAG_FRAME_START) {
 	    fprintf(stderr, "START------------------------------ %d \n", framecount);
-	  //Not seeing this  	  
+	    //Not seeing this  	  
 	  }	  
 	  
 	  if (h264coder_output.flags & MMAL_BUFFER_HEADER_FLAG_KEYFRAME) {
 	    fprintf(stderr, "KEYFRAME------------------------------ %d \n", framecount);
-	     //KEYFRAME also sends FRAME END so it is written by the next line
+	    //KEYFRAME also sends FRAME END so it is written by the next line
 	     
 	  }	  
 	 
 	  if (h264coder_output.flags & MMAL_BUFFER_HEADER_FLAG_FRAME_END) {
 		  fprintf(stderr, "FRAME END %d  pts = %d  dts = %d\n", framecount, h264coder_output.pts, h264coder_output.dts);
 		  camera1.Save_MP4(&h264coder_output,framecount);
+		  
+		  //Write out the bytes in the frame
+		  // for (size_t i = 0; i != h264coder_output.length - 1; ++i)
+            //fprintf(stderr, "\\%02x", (unsigned char)h264coder_output.data[i]);
 	  }
 	  
 end:
