@@ -7,7 +7,7 @@ CC=g++
 IFLAGS = -I/opt/vc/include -I/opt/vc/include/interface
 LFLAGS = -L/opt/vc/lib
 
-LIBAVFLAGS = -lavutil -lavformat -lavcodec -lswscale
+LIBAVFLAGS = -lavutil -lavformat -lavcodec -lswscale -lpthread
 LIBMMALFLAGS = -lmmal -lbcm_host -lmmal_core -lmmal_components -lmmal_util -lvcos 
 
 LDFLAGS =  $(LIBAVFLAGS) $(LIBMMALFLAGS)

@@ -47,6 +47,7 @@ public:
 	mmal_engine(const char *name);
 	uint8_t run(AVFrame **frame, Buffer *outbuffer);
 	~mmal_engine();
+	static void log_format(MMAL_ES_FORMAT_T *format, MMAL_PORT_T *port);
 
 
     

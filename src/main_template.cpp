@@ -71,7 +71,8 @@ and then sending to three components in parallel: h264 encoder, splitter (as rbg
 
 //#include "connect_connections_app.cpp"          //WORKING,
 
-#include "h264_writer_app.cpp"                 //WORKING
+//#include "h264_writer_app.cpp"                 //WORKING
 
+#include "container_reader_to_decoder_app.cpp"
 
 };

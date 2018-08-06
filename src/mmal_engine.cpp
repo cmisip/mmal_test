@@ -377,3 +377,58 @@ mmal_engine::~mmal_engine() {
       
       
 };
+
+void mmal_engine::log_format(MMAL_ES_FORMAT_T *format, MMAL_PORT_T *port) {
+   const char *name_type;
+
+   if(port)
+      fprintf(stderr,"%s:%s:%i\n", port->component->name,
+               port->type == MMAL_PORT_TYPE_CONTROL ? "ctr" :
+                  port->type == MMAL_PORT_TYPE_INPUT ? "in" :
+                  port->type == MMAL_PORT_TYPE_OUTPUT ? "out" : "invalid",
+               (int)port->index);
+
+   switch(format->type)
+   {
+   case MMAL_ES_TYPE_AUDIO: name_type = "audio"; break;
+   case MMAL_ES_TYPE_VIDEO: name_type = "video"; break;
+   case MMAL_ES_TYPE_SUBPICTURE: name_type = "subpicture"; break;
+   default: name_type = "unknown"; break;
+   }
+
+   fprintf(stderr,"type: %s, fourcc: %4.4s\n", name_type, (char *)&format->encoding);
+   fprintf(stderr," bitrate: %i, framed: %i\n", format->bitrate,
+            !!(format->flags & MMAL_ES_FORMAT_FLAG_FRAMED));
+   fprintf(stderr," extra data: %i, %p", format->extradata_size, format->extradata);
+   switch(format->type)
+   {
+   case MMAL_ES_TYPE_AUDIO:
+      fprintf(stderr," samplerate: %i, channels: %i, bps: %i, block align: %i\n",
+               format->es->audio.sample_rate, format->es->audio.channels,
+               format->es->audio.bits_per_sample, format->es->audio.block_align);
+      break;
+
+   case MMAL_ES_TYPE_VIDEO:
+      fprintf(stderr," width: %i, height: %i, (%i,%i,%i,%i)\n",
+               format->es->video.width, format->es->video.height,
+               format->es->video.crop.x, format->es->video.crop.y,
+               format->es->video.crop.width, format->es->video.crop.height);
+      fprintf(stderr," pixel aspect ratio: %i/%i, frame rate: %i/%i\n",
+               format->es->video.par.num, format->es->video.par.den,
+               format->es->video.frame_rate.num, format->es->video.frame_rate.den);
+      break;
+
+   case MMAL_ES_TYPE_SUBPICTURE:
+      break;
+
+   default: break;
+   }
+
+   if(!port)
+      return;
+
+   fprintf(stderr," buffers num: %i(opt %i, min %i), size: %i(opt %i, min: %i), align: %i\n",
+            port->buffer_num, port->buffer_num_recommended, port->buffer_num_min,
+            port->buffer_size, port->buffer_size_recommended, port->buffer_size_min,
+            port->buffer_alignment_min);
+}

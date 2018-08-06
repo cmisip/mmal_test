@@ -12,6 +12,15 @@ void Connection::input_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)
 void Connection::output_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer) {
    CONTEXT_T *ctx = (struct CONTEXT_T *)port->userdata;
    mmal_queue_put(ctx->queue, buffer);
+   fprintf(stderr,"OUTPUT");
+}
+
+void Connection::connection_cb(MMAL_CONNECTION_T *connection)
+{
+   CONTEXT_T *ctx = (struct CONTEXT_T *)connection->user_data;
+   fprintf(stderr, "CALLBACK called\n");
+   //mmal_queue_put(ctx->queue, buffer);
+   //vcos_semaphore_post(&ctx->event);
 }
 
 uint8_t Connection::connect_ports(MMAL_PORT_T *output_port, MMAL_PORT_T *input_port, MMAL_CONNECTION_T **connection)

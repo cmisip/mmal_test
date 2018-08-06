@@ -19,6 +19,7 @@ Connection(Connection *connection1, Connection *connection2);
 ~Connection();
 static void input_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer);
 static void output_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer);
+static void connection_cb(MMAL_CONNECTION_T *connection);
 uint8_t enable();
 uint8_t create_input_pool();
 uint8_t create_output_pool();
@@ -50,6 +51,7 @@ private:
 /** Context for our application */
 struct CONTEXT_T {
       MMAL_QUEUE_T *queue=0;
+      //VCOS_SEMAPHORE_T event;
     } contexti, contexto;
     
 MMAL_CONNECTION_T *connection = 0;
