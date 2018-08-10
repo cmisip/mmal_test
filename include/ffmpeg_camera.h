@@ -22,13 +22,16 @@ extern "C" {
 
 #endif
 
-
+#define MMAL_BUFFER_HEADER_FLAG_CONFIG                 (1<<5)
 
 class ffmpeg_camera {
 
 public:
 uint8_t ctype = 0;
 uint16_t width=0, height=0;
+bool extradata_written=0;
+
+uint8_t nal_unit_type=0;
 
 
 ffmpeg_camera(const uint8_t type, const char *src_filename);
@@ -60,6 +63,10 @@ AVCodec *dec = NULL;
 AVCodecContext *dec_ctx = NULL;
 AVCodec* outCodec;
 AVStream* outputStream;
+uint8_t *sps=NULL;
+uint8_t *pps=NULL;
+uint16_t spslen=0;
+uint16_t ppslen=0;
 
 
 //FIXME, START : Only used to test if libavcodec is capturing frames properly
@@ -77,6 +84,7 @@ AVCodec *jpegCodec = NULL;
 
 AVOutputFormat *outputFormat;
 AVFormatContext *outputFormatCtx;
+AVDictionary *fmt_opts = NULL;
 
 int video_stream_idx = -1;
 AVFrame *frame = NULL;

@@ -192,11 +192,19 @@ void ffmpeg_camera::Init_MP4(const char* filename){
         
         outputStream->codecpar->codec_id = AV_CODEC_ID_H264;
         outputStream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
+        
+        //outputStream->codec->sample_fmt = outCodec->sample_fmts ?  outCodec->sample_fmts[0] : AV_SAMPLE_FMT_S16;
+        
         outputStream->codecpar->width = st->codecpar->width;
         outputStream->codecpar->height = st->codecpar->height;
         outputStream->codecpar->format = AV_PIX_FMT_YUV420P;
         outputStream->codecpar->bit_rate = 4000000;
         outputStream->time_base = AVRational{1,30};
+        
+        if (outputFormatCtx->oformat->flags & AVFMT_GLOBALHEADER) {
+          outputFormatCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+          //fprintf(stderr,"Setting global header flag");
+        }
         
         
         if ( !(outputFormatCtx->flags & AVFMT_NOFILE) )
@@ -205,10 +213,15 @@ void ffmpeg_camera::Init_MP4(const char* filename){
             ret = 1;
           }
 
-        if(avformat_write_header(outputFormatCtx , NULL) < 0){
+        /*if(avformat_write_header(outputFormatCtx , NULL) < 0){
             fprintf(stderr,"Error avformat_write_header");
             ret = 1;
-        }
+        }*/
+    
+        //if (avcodec_open2(outputStream->codec, outCodec, NULL) <0 ) {
+        //   fprintf(stderr,"avcodec_open2 error");
+        //}
+    
     
         fprintf(stderr,"OUTPUT FORMAT-------------------------------");
         av_dump_format(outputFormatCtx , 0 ,filename ,1);
@@ -219,9 +232,182 @@ void ffmpeg_camera::Init_MP4(const char* filename){
 
 
 void ffmpeg_camera::Save_MP4(Buffer *buff, int timeStampValue){
-	    opkt.data=(uint8_t* )av_mallocz(buff->length);
-        memcpy(opkt.data,buff->data,buff->length);
+	
+	    if  (buff->flags & MMAL_BUFFER_HEADER_FLAG_CONFIG){
+			
+		   //config headers actually contain SPS and PPS and need to be written in avcc atom of the MP4 header
+		   if (!extradata_written) {
+		      
+		      uint32_t nal_delimiter=0x00000001;
+		      uint8_t sps_start=0,sps_end=0,pps_start=0,pps_end=buff->length-1;
+		      
+		      
+		      //find the pps and sps in the bytestring by looking for the nal_delimiter
+		      for (uint16_t i=0; i< buff->length; i++ ) {
+				 uint32_t tmp=buff->data[i];
+				 int result=memcmp(&tmp,&nal_delimiter,4);
+				 //fprintf(stderr,"Comparing %.8x to %.8x and result is %d\n", nal_delimiter, (uint32_t)buff->data[i], result);
+				 if  (!result ) {
+				   //fprintf(stderr,"Match at %d \n", i);
+				   if (!sps_start)
+				     sps_start=i+1;
+				   if (sps_start) {
+				     pps_start=i+1;
+				     sps_end=i-4;
+				     spslen=sps_end-sps_start+1; //start is first byte of sps, end is last byte of sps
+				     ppslen=pps_end-pps_start+1; //start is first byte of pps, end is last byte of pps
+				   }    
+				     
+				   
+				    
+				 }   
+			  }	  
+			  
+			  /*fprintf(stderr,"SPS is %d\n",spslen);
+			  for (size_t i = sps_start; i != sps_end+1; ++i)
+                    fprintf(stderr, "%02x", (unsigned char)buff->data[i]);
+                    fprintf(stderr,"\n");
+                    
+              fprintf(stderr,"PPS is %d\n",ppslen);
+			  for (size_t i = pps_start; i != pps_end+1; ++i)
+                    fprintf(stderr, "%02x", (unsigned char)buff->data[i]); 
+                    fprintf(stderr,"\n");    
+			  */
+		      
+		      uint8_t nal_unit_type = buff->data[sps_start] & 0x1f;
+		      
+			  if (nal_unit_type == 7 && !sps)  { //SPS
+				  
+				  sps=(uint8_t *)av_mallocz(spslen);
+				  memcpy(sps,(void*)&buff->data[sps_start],spslen);
+				  
+				  /*fprintf(stderr,"GOT THE SPS %d \n",buff->length);
+				  for (size_t i = 0; i != spslen; ++i)
+                    fprintf(stderr, "%02x", (unsigned char)sps[i]);
+                    fprintf(stderr,"\n"); 
+				  */
+			  }	
+			    
+	          
+				  
+			  nal_unit_type = buff->data[pps_start] & 0x1f;	
+
+			  if (nal_unit_type == 8 && !pps)  { //PPS  
+				  pps=(uint8_t *)av_mallocz(ppslen); 
+				  memcpy(pps,(void*)&buff->data[pps_start],ppslen);
+				   
+				  /*fprintf(stderr,"GOT THE PPS\n");
+				  for (size_t i = 0; i != ppslen; ++i)
+                    fprintf(stderr, "%02x", (unsigned char)pps[i]);
+			        fprintf(stderr,"\n");
+			      */  
+			  }	  
+	       
+	       if ((sps) && (pps)) {
+			  //length of extradata is 6 bytes + 2 bytes for spslen + sps + 1 byte number of pps + 2 bytes for ppslen + pps
+			   
+			  uint32_t extradata_len = 8 + spslen + 1 + 2 + ppslen;
+			  outputStream->codecpar->extradata = (uint8_t*)av_mallocz(extradata_len);
+			  
+              outputStream->codecpar->extradata_size = extradata_len;
+
+              //start writing avcc extradata
+              outputStream->codecpar->extradata[0] = 0x01;      //version
+              outputStream->codecpar->extradata[1] = sps[1];    //profile
+              outputStream->codecpar->extradata[2] = sps[2];    //comatibility
+              outputStream->codecpar->extradata[3] = sps[3];    //level
+              outputStream->codecpar->extradata[4] = 0xFC | 3;  // reserved (6 bits), NALU length size - 1 (2 bits) which is 3
+              outputStream->codecpar->extradata[5] = 0xE0 | 1;  // reserved (3 bits), num of SPS (5 bits) which is 1 sps
+              
+              //write spslen in big endian
+              outputStream->codecpar->extradata[6] = (spslen >> 8) & 0x00ff;
+              outputStream->codecpar->extradata[7] = spslen & 0x00ff;
+              
+              //Write the actual sps
+              int i = 0;
+              for (i=0; i<spslen; i++) {
+                outputStream->codecpar->extradata[8 + i] = sps[i];
+              }
+              
+              /*for (size_t i = 0; i != outputStream->codecpar->extradata_size; ++i)
+                    fprintf(stderr, "\\%02x", (unsigned char)outputStream->codecpar->extradata[i]);
+                    fprintf(stderr,"\n");
+              */
+              
+              //Number of pps
+              outputStream->codecpar->extradata[8 + spslen] = 0x01;
+              
+              
+              /*for (size_t i = 0; i != outputStream->codecpar->extradata_size; ++i)
+                    fprintf(stderr, "\\%02x", (unsigned char)outputStream->codecpar->extradata[i]);
+                    fprintf(stderr,"\n");
+              */
+              
+              //Size of pps in big endian
+              outputStream->codecpar->extradata[8 + spslen + 1] = (ppslen >> 8) & 0x00ff;
+              outputStream->codecpar->extradata[8 + spslen + 2] = ppslen & 0x00ff;
+              for (i=0; i<ppslen; i++) {
+               outputStream->codecpar->extradata[8 + spslen + 1 + 2 + i] = pps[i];
+              }
+              
+              //Print out the full extradata
+              /*for (size_t i = 0; i != outputStream->codecpar->extradata_size; ++i)
+                    fprintf(stderr, "\\%02x", (unsigned char)outputStream->codecpar->extradata[i]);
+                    fprintf(stderr,"\n");
+              */
+              
+              if(avformat_write_header(outputFormatCtx, &fmt_opts) < 0){
+                fprintf(stderr,"Error avformat_write_header");
+                ret = 1;
+              } else {
+                extradata_written=true;
+                fprintf(stderr,"EXTRADATA written\n");
+		      }    
+		   } 
+		      
+		   
+       
+		   
+               
+	       return;
+	    }
+	}  else {//extradata is written already
+	    
+	    
+	    /*fprintf(stderr,"ORIGINAL \n");
+	    for (size_t i = 0; i != buff->length; ++i)
+                    fprintf(stderr, "\\%02x", (unsigned char)buff->data[i]);
+                    fprintf(stderr,"\n");
+	    */
+	    
+	    
+	    opkt.data=(uint8_t*)av_mallocz(buff->length); //opkt.data will hold the 4 byte nal size and the actual bytestream
+	    
+	    //copy the nal size which will be 4 bytes less since the leading 4 bytes will be the nal size
+	    uint32_t nal_size=buff->length-4; //little endian
+	    
+	    //write as big endian on the start of opkt.data
+	    uint32_t b0,b1,b2,b3;
+
+        b0 = (nal_size & 0x000000ff) << 24u;
+        b1 = (nal_size & 0x0000ff00) << 8u;
+        b2 = (nal_size & 0x00ff0000) >> 8u;
+        b3 = (nal_size & 0xff000000) >> 24u;
+        
+        uint32_t res = b0 | b1 | b2 | b3;
+        memcpy(opkt.data,&res,4);
+        
+        //Write the actual h264 data after the nal size
+        memcpy(opkt.data+4,buff->data+4,buff->length-4);
         opkt.size=buff->length;
+        
+        
+        /*
+	    fprintf(stderr,"MODIFIED \n");
+	    for (size_t i = 0; i != opkt.size; ++i)
+                    fprintf(stderr, "\\%02x", (unsigned char)opkt.data[i]);
+                    fprintf(stderr,"\n");
+        */ 
         
 
 	    AVRational time_base = outputStream->time_base;
@@ -231,15 +417,17 @@ void ffmpeg_camera::Save_MP4(Buffer *buff, int timeStampValue){
         opkt.duration = av_rescale_q(1, AVRational{1,30}, time_base);
         ret = av_write_frame(outputFormatCtx, &opkt);
         if(ret < 0)
-        	fprintf(stderr, "Error write frame");
+        	fprintf(stderr, "Error writing frame\n");
         else
-            fprintf(stderr, "FFMPEG Successful WRITE --> ");
+            fprintf(stderr, "FFMPEG Successful WRITE \n ");
+            
+    }        
 }	
 
 void ffmpeg_camera::Close_MP4(){
 	ret = av_write_trailer(outputFormatCtx);
     if(ret < 0 )
-    	fprintf(stderr,"Error write trailer");
+    	fprintf(stderr,"Error writing trailer");
 }	
 
 //This requires swscale conversion to RGB first
@@ -351,6 +539,10 @@ ffmpeg_camera::~ffmpeg_camera(){
     //FIXME, only used for JPEG writing
     if (jpegContext)
     avcodec_free_context(&jpegContext);  
+    if (sps)
+       free(sps);
+    if (pps)
+       free(pps);
       
 };
 
