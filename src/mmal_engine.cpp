@@ -117,11 +117,11 @@ uint8_t mmal_engine::set_video_output_port(uint16_t owidth, uint16_t oheight, MM
    //width=owidth;
    //height=oheight;
   
-   //format_out->es->video.width = VCOS_ALIGN_UP(owidth, 32);
-   //format_out->es->video.height = VCOS_ALIGN_UP(oheight, 16);
+   format_out->es->video.width = VCOS_ALIGN_UP(owidth, 32);
+   format_out->es->video.height = VCOS_ALIGN_UP(oheight, 16);
    
-   format_out->es->video.width = owidth;
-   format_out->es->video.height = oheight;
+   //format_out->es->video.width = owidth;
+   //format_out->es->video.height = oheight;
    
    //Defaults
    format_out->es->video.frame_rate.num = 30;

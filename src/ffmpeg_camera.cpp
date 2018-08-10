@@ -162,8 +162,6 @@ return ret;
 void ffmpeg_camera::Init_MP4(const char* filename){
           
         //Setup outputformatctx for mp4 file output
-        //initialize output file
-	    //std::string filename = "cameraRecorder.mp4";
 	    
         outputFormat = av_guess_format("mp4",filename,NULL);
         if(!outputFormat)
@@ -193,17 +191,15 @@ void ffmpeg_camera::Init_MP4(const char* filename){
         outputStream->codecpar->codec_id = AV_CODEC_ID_H264;
         outputStream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
         
-        //outputStream->codec->sample_fmt = outCodec->sample_fmts ?  outCodec->sample_fmts[0] : AV_SAMPLE_FMT_S16;
-        
         outputStream->codecpar->width = st->codecpar->width;
         outputStream->codecpar->height = st->codecpar->height;
         outputStream->codecpar->format = AV_PIX_FMT_YUV420P;
-        outputStream->codecpar->bit_rate = 4000000;
+        //outputStream->codecpar->bit_rate = 4000000;
         outputStream->time_base = AVRational{1,30};
         
         if (outputFormatCtx->oformat->flags & AVFMT_GLOBALHEADER) {
           outputFormatCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-          //fprintf(stderr,"Setting global header flag");
+          fprintf(stderr,"Setting global header flag");
         }
         
         
@@ -213,15 +209,8 @@ void ffmpeg_camera::Init_MP4(const char* filename){
             ret = 1;
           }
 
-        /*if(avformat_write_header(outputFormatCtx , NULL) < 0){
-            fprintf(stderr,"Error avformat_write_header");
-            ret = 1;
-        }*/
-    
-        //if (avcodec_open2(outputStream->codec, outCodec, NULL) <0 ) {
-        //   fprintf(stderr,"avcodec_open2 error");
-        //}
-    
+        //avcodec_write_header is delayed until we receive the CONFIG HEADER from mmal which
+        //contains the sps pps bytestream
     
         fprintf(stderr,"OUTPUT FORMAT-------------------------------");
         av_dump_format(outputFormatCtx , 0 ,filename ,1);
