@@ -21,6 +21,8 @@ uint8_t Connection::connect_ports(MMAL_PORT_T *output_port, MMAL_PORT_T *input_p
    status =  mmal_connection_create(connection, output_port, input_port, MMAL_CONNECTION_FLAG_TUNNELLING | MMAL_CONNECTION_FLAG_ALLOCATION_ON_OUTPUT);
    CHECK_STATUS(status, "failed to enable output port");
  
+   
+ 
    return status;
 }
 
@@ -28,6 +30,9 @@ uint8_t Connection::connect_ports(MMAL_PORT_T *output_port, MMAL_PORT_T *input_p
 uint8_t Connection::enable(){
 	status =  mmal_connection_enable(connection);
 	CHECK_STATUS(status, "failed to enable connection");
+	
+	fprintf(stderr,"OUT is %s\n",connection->out->name);
+	
 	if (input_port) {
 	
     

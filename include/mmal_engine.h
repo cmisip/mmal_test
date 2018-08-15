@@ -30,22 +30,25 @@ class mmal_engine{
 public:	
     //uint8_t init(const char **name);
     uint8_t set_video_input_port(uint16_t width, uint16_t height, MMAL_FOURCC_T iformat);
-    
+    uint8_t set_video_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOURCC_T iformat,extradata_pack **pack);
     uint8_t set_video_output_port(uint16_t width, uint16_t height, MMAL_FOURCC_T oformat);
     uint8_t set_input_flag(uint32_t name);
     uint8_t set_output_flag(uint32_t name);
+    
     uint8_t enable_video_input_port();
     uint8_t enable_video_output_port();
     uint8_t create_input_pool();
     uint8_t create_output_pool();
     static void input_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer );
     static void output_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer );
+    static void control_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer);
     uint8_t enable();
     
    
 
 	mmal_engine(const char *name);
 	uint8_t run(AVFrame **frame, Buffer *outbuffer);
+	uint8_t run(AVPacket **packet, Buffer *outbuf);
 	~mmal_engine();
 
 
@@ -63,6 +66,7 @@ uint32_t buffsize=0;
 struct CONTEXT_T {
    //VCOS_SEMAPHORE_T semaphore;
    MMAL_QUEUE_T *queue=NULL;
+   MMAL_STATUS_T status;
 } context;
 
 uint16_t width=0;

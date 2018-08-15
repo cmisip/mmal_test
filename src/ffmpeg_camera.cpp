@@ -6,8 +6,28 @@
 #endif
 
 
+void extradata_pack::init(uint8_t isize,uint8_t** buffer){
+	size=isize; 
+	data=(uint8_t*)av_mallocz(size); 
+	memcpy(data,*buffer,size);
+	print();
+};
+
+extradata_pack::~extradata_pack() { if (data) free(data); };
+
 uint16_t ffmpeg_camera::get_width(){ return video_dec_ctx->width; };
-uint16_t ffmpeg_camera::get_height(){ return video_dec_ctx->height; };										  
+uint16_t ffmpeg_camera::get_height(){ return video_dec_ctx->height; };	
+
+								  
+extradata_pack* ffmpeg_camera::get_extradata(){
+	return &edata;
+}
+void extradata_pack::print(){
+    fprintf(stderr,"EXTRADATA\n");
+	for (size_t i = 0; i != size+1; ++i)
+                    fprintf(stderr, "%02x", (unsigned char)data[i]);
+                    fprintf(stderr,"\n");
+};	
 
 uint8_t ffmpeg_camera::initialize(){
 	
@@ -79,6 +99,19 @@ uint8_t ffmpeg_camera::initialize(){
         
         fprintf(stderr,"Width: %d\n", video_dec_ctx->width);
         fprintf(stderr,"Height: %d\n", video_dec_ctx->height);
+        fprintf(stderr,"Extradata size: %d\n",video_dec_ctx->extradata_size);
+        
+        
+        
+        
+        fprintf(stderr,"ORIGINAL \n");
+        
+        for (size_t i = 0; i != video_dec_ctx->extradata_size+1; ++i)
+                    fprintf(stderr, "%02x", (unsigned char)video_dec_ctx->extradata[i]);
+                    fprintf(stderr,"\n");
+                    
+                    
+        edata.init(video_dec_ctx->extradata_size, &video_dec_ctx->extradata);            
         
 	    av_dump_format(fmt_ctx, 0, src_filename, 0);
 
@@ -573,6 +606,24 @@ AVFrame * ffmpeg_camera::run(){
             
         }//got a frame here
         return frame;    
+        
+    }
+    return NULL;
+};
+
+AVPacket * ffmpeg_camera::get(){
+	while (av_read_frame(fmt_ctx, &pkt) >= 0) {
+        if (pkt.stream_index == video_stream_idx) //{
+         return &pkt;
+            /*int ret = decode_packet(&pkt);
+            if (ret < 0 )
+                continue;
+            else
+               fprintf(stderr, "FFMPEG Successful decode --> ");
+            */
+             
+        //}//got a frame here
+        //return frame;    
         
     }
     return NULL;

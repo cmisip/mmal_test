@@ -1,17 +1,9 @@
 
-////#ifndef mmal_engine
-//#define mmal_engine
 
-//#include "mmal_engine.h"
-
-//#endif
-
-//#ifndef connection
-//#define connection
 
 #include "connection.h"
 
-//#endif
+
 
 #include <fcntl.h>
 #include <mutex>
@@ -19,7 +11,7 @@
 #include <iomanip>
 
 
-//Add headers for specific applications
+
 
 
 
@@ -71,7 +63,12 @@ and then sending to three components in parallel: h264 encoder, splitter (as rbg
 
 //#include "connect_connections_app.cpp"          //WORKING,
 
-#include "h264_writer_app.cpp"                 //WORKING
+//Example writing h264 encoder output to mp4 file container
 
+//#include "h264_writer_app.cpp"                 //WORKING
+
+//Example sending avcodec packets to mmal decoder  //WORKING
+
+#include "avcodec_packet_to_decoder_app.cpp" 
 
 };

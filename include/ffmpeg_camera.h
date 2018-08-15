@@ -24,6 +24,15 @@ extern "C" {
 
 #define MMAL_BUFFER_HEADER_FLAG_CONFIG                 (1<<5)
 
+class extradata_pack {
+	public:
+	uint8_t size=0;
+	uint8_t *data=NULL;
+	void init(uint8_t size, uint8_t** buffer);
+	void print();
+	~extradata_pack();
+};	
+
 class ffmpeg_camera {
 
 public:
@@ -33,16 +42,23 @@ bool extradata_written=0;
 
 uint8_t nal_unit_type=0;
 
+extradata_pack edata;
+
+	
+
 
 ffmpeg_camera(const uint8_t type, const char *src_filename);
 ~ffmpeg_camera();
 AVFrame *  run();
+AVPacket * get();
 uint8_t decode_packet(const AVPacket *ipkt);
 uint8_t save_frame_as_jpeg(AVFrame *pFrame, int FrameNo);
 void Save_PPM(AVFrame *pFrame, int iFrame);
 uint8_t Save_JPEG(AVFrame *pFrame, int iFrame);
 uint16_t get_width();
 uint16_t get_height();
+extradata_pack *get_extradata();
+
 
 void Init_MP4(const char* filename);
 void Save_MP4(Buffer *buff, int timeStampValue);

@@ -26,14 +26,34 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 
-//#ifndef mmal_engine
-//#define mmal_engine
-
 #include "mmal_engine.h"
 
-//#endif
 
+/** Callback from the control port.
+ * Component is sending us an event. */
+void mmal_engine::control_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)
+{
+   struct CONTEXT_T *ctx = (struct CONTEXT_T *)port->userdata;
 
+   switch (buffer->cmd)
+   {
+   case MMAL_EVENT_EOS:
+      /* Only sink component generate EOS events */
+      break;
+   case MMAL_EVENT_ERROR:
+      /* Something went wrong. Signal this to the application */
+      ctx->status = *(MMAL_STATUS_T *)buffer->data;
+      break;
+   default:
+      break;
+   }
+
+   /* Done with the event, recycle it */
+   mmal_buffer_header_release(buffer);
+
+   /* Kick the processing thread */
+   //vcos_semaphore_post(&ctx->semaphore);
+}
 
 
 /** Callback from the input port.
@@ -62,6 +82,46 @@ void mmal_engine::output_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffe
    //vcos_semaphore_post(&ctx->semaphore);
 }
 
+		
+
+uint8_t mmal_engine::set_video_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOURCC_T iformat,extradata_pack **pack){
+	    
+    /* Set format of video engine input port */
+   MMAL_ES_FORMAT_T *format_in = engine->input[0]->format;
+   format_in->type = MMAL_ES_TYPE_VIDEO;
+   format_in->encoding = iformat;
+   
+   width=iwidth;
+   height=iheight;
+   format_in->es->video.width = VCOS_ALIGN_UP(iwidth, 32);
+   format_in->es->video.height = VCOS_ALIGN_UP(iheight,16);
+   
+   format_in->es->video.frame_rate.num = 30;
+   format_in->es->video.frame_rate.den = 1;
+   format_in->es->video.par.num = 1;
+   format_in->es->video.par.den = 1;
+   format_in->es->video.crop.width = iwidth;
+   format_in->es->video.crop.height = iheight;
+   
+   if (mmal_format_extradata_alloc(format_in, (*pack)->size) < 0)
+     fprintf(stderr,"failed to allocate memory for extradata\n");
+   format_in->extradata_size = (*pack)->size;
+   if (format_in->extradata_size)
+      memcpy(format_in->extradata, (*pack)->data, format_in->extradata_size);
+      
+   /*fprintf(stderr,"PACK COMMIT\n");
+	for (size_t i = 0; i != format_in->extradata_size+1; ++i)
+                    fprintf(stderr, "%02x", (unsigned char)format_in->extradata[i]);
+                    fprintf(stderr,"\n");
+   */
+   
+   status = mmal_port_format_commit(engine->input[0]);
+   CHECK_STATUS(status, "failed to commit input format");   
+   
+   return status;
+	
+	
+};
 
 
 uint8_t mmal_engine::set_video_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOURCC_T iformat){
@@ -70,17 +130,12 @@ uint8_t mmal_engine::set_video_input_port(uint16_t iwidth, uint16_t iheight, MMA
    MMAL_ES_FORMAT_T *format_in = engine->input[0]->format;
    format_in->type = MMAL_ES_TYPE_VIDEO;
    format_in->encoding = iformat;
-   
-   //width=VCOS_ALIGN_UP(iwidth,32);
-   //height=VCOS_ALIGN_UP(iheight,16);
-   
+
    width=iwidth;
    height=iheight;
+   
    format_in->es->video.width = VCOS_ALIGN_UP(iwidth, 32);
    format_in->es->video.height = VCOS_ALIGN_UP(iheight,16);
-   //format_in->es->video.width = iwidth;
-   //format_in->es->video.height = iheight;
-   
    
    format_in->es->video.frame_rate.num = 30;
    format_in->es->video.frame_rate.den = 1;
@@ -88,59 +143,35 @@ uint8_t mmal_engine::set_video_input_port(uint16_t iwidth, uint16_t iheight, MMA
    format_in->es->video.par.den = 1;
    format_in->es->video.crop.width = iwidth;
    format_in->es->video.crop.height = iheight;
-   //format_in->es->video.crop.width = VCOS_ALIGN_UP(iwidth, 32);
-   //format_in->es->video.crop.height = VCOS_ALIGN_UP(iheight,16);
-   
    
    
    status = mmal_port_format_commit(engine->input[0]);
    CHECK_STATUS(status, "failed to commit input format");   
-
-   
-   
-   
-   
-   
    
    return status;
 	
 	
 };
 
-
 uint8_t mmal_engine::set_video_output_port(uint16_t owidth, uint16_t oheight, MMAL_FOURCC_T oformat){
    MMAL_ES_FORMAT_T *format_out = engine->output[0]->format;
    format_out->type = MMAL_ES_TYPE_VIDEO;
    
    format_out->encoding = oformat;
-   
-   //width=owidth;
-   //height=oheight;
   
    format_out->es->video.width = VCOS_ALIGN_UP(owidth, 32);
    format_out->es->video.height = VCOS_ALIGN_UP(oheight, 16);
    
-   //format_out->es->video.width = owidth;
-   //format_out->es->video.height = oheight;
-   
-   //Defaults
    format_out->es->video.frame_rate.num = 30;
    format_out->es->video.frame_rate.den = 1;
    format_out->es->video.par.num = 0; 
    format_out->es->video.par.den = 1;
    format_out->es->video.crop.width = owidth;
    format_out->es->video.crop.height = oheight;
-   //format_out->es->video.crop.width = VCOS_ALIGN_UP(owidth, 32);
-   //format_out->es->video.crop.height = VCOS_ALIGN_UP(oheight,16);
+   
 
    status = mmal_port_format_commit(engine->output[0]);
    CHECK_STATUS(status, "failed to commit output format");   
-   
-
-   
-   
-   
-   
    
    return status;
    
@@ -180,6 +211,10 @@ uint8_t mmal_engine::create_input_pool(){
    engine->input[0]->buffer_num = engine->input[0]->buffer_num_recommended;
    engine->input[0]->buffer_size = engine->input[0]->buffer_size_recommended;
    
+   engine->input[0]->buffer_size = 512 * 1024;
+   fprintf(stderr,"INPUT BUFFER SIZE %d NUM %d\n",engine->input[0]->buffer_size_recommended,engine->input[0]->buffer_num_recommended);
+   
+   
    pool_in = mmal_pool_create(engine->input[0]->buffer_num,
                               engine->input[0]->buffer_size);
    
@@ -197,6 +232,8 @@ uint8_t mmal_engine::create_output_pool(){
 	
    engine->output[0]->buffer_num = engine->output[0]->buffer_num_recommended;
    engine->output[0]->buffer_size = engine->output[0]->buffer_size_recommended; 
+   fprintf(stderr,"OUTPUT BUFFER SIZE %d NUM %d\n",engine->output[0]->buffer_size_recommended,engine->output[0]->buffer_num_recommended);
+   
    pool_out = mmal_pool_create(engine->output[0]->buffer_num,
                                engine->output[0]->buffer_size);
                                
@@ -237,7 +274,6 @@ uint8_t mmal_engine::enable() {
    
    
    //buffsize is used for sending avcodec frame to mmal so needs to reflect the original video size
-   //buffsize=av_image_get_buffer_size(AV_PIX_FMT_YUV420P, VCOS_ALIGN_UP(width,32), VCOS_ALIGN_UP(height,16), 1);
    buffsize=av_image_get_buffer_size(AV_PIX_FMT_YUV420P, width, height, 1);
      
    fprintf(stderr, "Constructing mmal engine %s ******************\n", name);
@@ -251,6 +287,7 @@ uint8_t mmal_engine::enable() {
    fprintf(stderr, " type: %i, fourcc: %4.4s\n", format_in->type, (char *)&format_in->encoding);
    fprintf(stderr, " bitrate: %i, framed: %i\n", format_in->bitrate,
            !!(format_in->flags & MMAL_ES_FORMAT_FLAG_FRAMED));
+   fprintf(stderr, " extra data: %i, %p\n", format_in->extradata_size, format_in->extradata);
    fprintf(stderr, " width: %i, height: %i, (%i,%i,%i,%i)\n",
            format_in->es->video.width, format_in->es->video.height,
            format_in->es->video.crop.x, format_in->es->video.crop.y,
@@ -266,6 +303,7 @@ uint8_t mmal_engine::enable() {
    fprintf(stderr, " type: %i, fourcc: %4.4s\n", format_out->type, (char *)&format_out->encoding);
    fprintf(stderr, " bitrate: %i, framed: %i\n", format_out->bitrate,
            !!(format_out->flags & MMAL_ES_FORMAT_FLAG_FRAMED));
+   fprintf(stderr, " extra data: %i, %p\n", format_out->extradata_size, format_out->extradata);
    fprintf(stderr, " width: %i, height: %i, (%i,%i,%i,%i)\n",
            format_out->es->video.width, format_out->es->video.height,
            format_out->es->video.crop.x, format_out->es->video.crop.y,
@@ -322,15 +360,71 @@ uint8_t mmal_engine::run(AVFrame **frame, Buffer *outbuf)
            outbuf->pts=buffer->pts;
            outbuf->dts=buffer->dts;
            
-           /*for (i=0; i<height; i++); {
-              memcpy(outbuf->data+(i*VCOS_ALIGN_UP(width,32)),buffer->data,width);
-	       }
-	       //outbuf->length=(width*height*12)/8;
-	       outbuf->length=(width*height*24)/8;
+          
+         }
+         mmal_buffer_header_mem_unlock(buffer); 
+         mmal_buffer_header_release(buffer);
+      }
+
+     
+      while ((buffer = mmal_queue_get(pool_out->queue)) != NULL)
+      {
+         status = mmal_port_send_buffer(engine->output[0], buffer);
+         CHECK_STATUS(status, "failed to send buffer to output port");
+      }
+      
+  }
+      
+      
+     return status;    
+}	
+
+
+uint8_t mmal_engine::run(AVPacket **packet, Buffer *outbuf)
+{   
+	MMAL_BUFFER_HEADER_T *buffer;
+	if (input_port) { 
+	if ((buffer = mmal_queue_get(pool_in->queue)) != NULL)
+      {  
+         
+         mmal_buffer_header_mem_lock(buffer);
+         
+         memcpy(buffer->data,(*packet)->data,(*packet)->size);
+         buffer->length=(*packet)->size;
+         
+         /*for (size_t i = 0; i < buffer->length; ++i)
+                    fprintf(stderr, "\\%02x", (unsigned char)buffer->data[i]);
+                    fprintf(stderr,"\n");
+         */
+         buffer->pts=(*packet)->pts;
+         buffer->dts=(*packet)->pts;
+         buffer->flags=(*packet)->flags;
+         mmal_buffer_header_mem_unlock(buffer);
+         
+            
+
+         fprintf(stderr, "%s sending packet >>>>> %i bytes\n", engine->input[0]->name, (int)buffer->length);
+         status = mmal_port_send_buffer(engine->input[0], buffer);
+         CHECK_STATUS(status, "failed to send buffer to input port");
+      }
+
+      }
+      
+      if (output_port) {
+      while ((buffer = mmal_queue_get(context.queue)) != NULL)
+      {
+         mmal_buffer_header_mem_lock(buffer);
+         fprintf(stderr, "%s receiving %d bytes <<<<< frame\n", engine->output[0]->name, buffer->length);
+         uint16_t i=0;
+         if (outbuf) {
+           memset(outbuf->data,0,outbuf->length);
+           memcpy(outbuf->data,buffer->data,buffer->length);
+           outbuf->length=buffer->length;
            outbuf->flags=buffer->flags;
            outbuf->cmd=buffer->cmd;
            outbuf->pts=buffer->pts;
-           outbuf->dts=buffer->dts;*/
+           outbuf->dts=buffer->dts;
+          
          }
          mmal_buffer_header_mem_unlock(buffer); 
          mmal_buffer_header_release(buffer);
@@ -354,6 +448,11 @@ mmal_engine::mmal_engine(const char* iname):name(iname) {
 	status = mmal_component_create(name, &engine);
     CHECK_STATUS(status, "failed to create engine");
     
+    /* Enable control port so we can receive events from the component */
+    engine->control->userdata = (MMAL_PORT_USERDATA_T *)&context;
+    status = mmal_port_enable(engine->control, control_callback);
+    CHECK_STATUS(status, "failed to enable control port");
+    
     if (engine->input)
     input_port = engine->input[0];
     if (engine->output)
@@ -363,9 +462,23 @@ mmal_engine::mmal_engine(const char* iname):name(iname) {
 	
 mmal_engine::~mmal_engine() {
 	
+    	
    
      fprintf(stderr,"Destructing mmal engine %s\n", engine->name);
 	   /* Cleanup everything */
+	   
+   if (input_port) 	   
+     mmal_port_disable(input_port);
+   if (output_port) 
+     mmal_port_disable(output_port);
+   //mmal_port_disable(decoder->control); 
+      
+    if (input_port)    
+     mmal_port_flush(input_port);
+   if (output_port)
+     mmal_port_flush(output_port);
+   //mmal_port_flush(decoder->control); 	   
+	   
    if (engine)
       mmal_component_destroy(engine);
    if (pool_in)

@@ -4,21 +4,22 @@
     ffmpeg_camera camera1(1,argv[1]);
     
     
-    
     //CREATE COMPONENTS HERE
     //mmal_engine encoder(MMAL_COMPONENT_DEFAULT_VIDEO_ENCODER) 
     //mmal_engine encoder("vc.ril.video_encode");
     //order matters, I think: 
     //1. set_video_input_port
     //2. set_video_output_port
+    
     //3. <optional> set_input_flag, set_output_flag
-    //4. enable_video_input_port
-    //5. enable_video_output_port
-    //6. create_input_pool
-    //7. create_output_pool
+
+    //4. create_input_pool
+    //5. create_output_pool
+
+    //6. enable_video_input_port
+    //7. enable_video_output_port
     //8. enable
-    
-    
+
     
     
     
