@@ -6,8 +6,28 @@
 #endif
 
 
+void extradata_pack::init(uint8_t isize,uint8_t** buffer){
+	size=isize; 
+	data=(uint8_t*)av_mallocz(size); 
+	memcpy(data,*buffer,size);
+	print();
+};
+
+extradata_pack::~extradata_pack() { if (data) free(data); };
+
 uint16_t ffmpeg_camera::get_width(){ return video_dec_ctx->width; };
-uint16_t ffmpeg_camera::get_height(){ return video_dec_ctx->height; };										  
+uint16_t ffmpeg_camera::get_height(){ return video_dec_ctx->height; };	
+
+								  
+extradata_pack* ffmpeg_camera::get_extradata(){
+	return &edata;
+}
+void extradata_pack::print(){
+    fprintf(stderr,"EXTRADATA\n");
+	for (size_t i = 0; i != size+1; ++i)
+                    fprintf(stderr, "%02x", (unsigned char)data[i]);
+                    fprintf(stderr,"\n");
+};	
 
 uint8_t ffmpeg_camera::initialize(){
 	
@@ -79,6 +99,19 @@ uint8_t ffmpeg_camera::initialize(){
         
         fprintf(stderr,"Width: %d\n", video_dec_ctx->width);
         fprintf(stderr,"Height: %d\n", video_dec_ctx->height);
+        fprintf(stderr,"Extradata size: %d\n",video_dec_ctx->extradata_size);
+        
+        
+        
+        
+        fprintf(stderr,"ORIGINAL \n");
+        
+        for (size_t i = 0; i != video_dec_ctx->extradata_size+1; ++i)
+                    fprintf(stderr, "%02x", (unsigned char)video_dec_ctx->extradata[i]);
+                    fprintf(stderr,"\n");
+                    
+                    
+        edata.init(video_dec_ctx->extradata_size, &video_dec_ctx->extradata);            
         
 	    av_dump_format(fmt_ctx, 0, src_filename, 0);
 
@@ -94,6 +127,8 @@ uint8_t ffmpeg_camera::initialize(){
           fprintf(stderr, "Could not allocate frame\n");
           ret = AVERROR(ENOMEM);
         }
+
+        
         
         //FIXME, START: below code for testing if frames are being captured properly by libavcodec
         //The swscale routine was necessary to save to file using SaveFrame
@@ -157,6 +192,266 @@ return ret;
 
 };
 
+void ffmpeg_camera::Init_MP4(const char* filename){
+          
+        //Setup outputformatctx for mp4 file output
+	    
+        outputFormat = av_guess_format("mp4",filename,NULL);
+        if(!outputFormat)
+          fprintf(stderr,"ERROR av guess format\n");
+
+        if(avformat_alloc_output_context2(&outputFormatCtx,outputFormat,NULL,filename) < 0 ){
+          fprintf(stderr,"Error avformat_alloc_output_context2 \n");
+          ret = 1;
+        }
+
+        if(!outputFormatCtx){
+          fprintf(stderr,"Error alloc output 2 \n");
+          ret = 1;
+        }
+        outCodec = avcodec_find_encoder(AV_CODEC_ID_H264);
+        if( !outCodec ){
+          fprintf(stderr,"Error avcodec_find_encoder \n");
+          ret = 1;
+        }
+
+        outputStream = avformat_new_stream(outputFormatCtx,outCodec);
+          if(!outputStream){
+          fprintf(stderr,"Error outputStream\n");
+          ret = 1;
+        }
+        
+        outputStream->codecpar->codec_id = AV_CODEC_ID_H264;
+        outputStream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
+        
+        outputStream->codecpar->width = st->codecpar->width;
+        outputStream->codecpar->height = st->codecpar->height;
+        outputStream->codecpar->format = AV_PIX_FMT_YUV420P;
+        //outputStream->codecpar->bit_rate = 4000000;
+        outputStream->time_base = AVRational{1,30};
+        
+        if (outputFormatCtx->oformat->flags & AVFMT_GLOBALHEADER) {
+          outputFormatCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+          fprintf(stderr,"Setting global header flag");
+        }
+        
+        
+        if ( !(outputFormatCtx->flags & AVFMT_NOFILE) )
+          if( avio_open2(&outputFormatCtx->pb , filename , AVIO_FLAG_WRITE ,NULL, NULL) < 0 ){
+            fprintf(stderr,"Error avio_open2");
+            ret = 1;
+          }
+
+        //avcodec_write_header is delayed until we receive the CONFIG HEADER from mmal which
+        //contains the sps pps bytestream
+    
+        fprintf(stderr,"OUTPUT FORMAT-------------------------------");
+        av_dump_format(outputFormatCtx , 0 ,filename ,1);
+        
+        av_init_packet(&pkt);
+        	
+}	
+
+
+void ffmpeg_camera::Save_MP4(Buffer *buff, int timeStampValue){
+	
+	    if  (buff->flags & MMAL_BUFFER_HEADER_FLAG_CONFIG){
+			
+		   //config headers actually contain SPS and PPS and need to be written in avcc atom of the MP4 header
+		   if (!extradata_written) {
+		      
+		      uint32_t nal_delimiter=0x00000001;
+		      uint8_t sps_start=0,sps_end=0,pps_start=0,pps_end=buff->length-1;
+		      
+		      
+		      //find the pps and sps in the bytestring by looking for the nal_delimiter
+		      for (uint16_t i=0; i< buff->length; i++ ) {
+				 uint32_t tmp=buff->data[i];
+				 int result=memcmp(&tmp,&nal_delimiter,4);
+				 //fprintf(stderr,"Comparing %.8x to %.8x and result is %d\n", nal_delimiter, (uint32_t)buff->data[i], result);
+				 if  (!result ) {
+				   //fprintf(stderr,"Match at %d \n", i);
+				   if (!sps_start)
+				     sps_start=i+1;
+				   if (sps_start) {
+				     pps_start=i+1;
+				     sps_end=i-4;
+				     spslen=sps_end-sps_start+1; //start is first byte of sps, end is last byte of sps
+				     ppslen=pps_end-pps_start+1; //start is first byte of pps, end is last byte of pps
+				   }    
+				     
+				   
+				    
+				 }   
+			  }	  
+			  
+			  /*fprintf(stderr,"SPS is %d\n",spslen);
+			  for (size_t i = sps_start; i != sps_end+1; ++i)
+                    fprintf(stderr, "%02x", (unsigned char)buff->data[i]);
+                    fprintf(stderr,"\n");
+                    
+              fprintf(stderr,"PPS is %d\n",ppslen);
+			  for (size_t i = pps_start; i != pps_end+1; ++i)
+                    fprintf(stderr, "%02x", (unsigned char)buff->data[i]); 
+                    fprintf(stderr,"\n");    
+			  */
+		      
+		      uint8_t nal_unit_type = buff->data[sps_start] & 0x1f;
+		      
+			  if (nal_unit_type == 7 && !sps)  { //SPS
+				  
+				  sps=(uint8_t *)av_mallocz(spslen);
+				  memcpy(sps,(void*)&buff->data[sps_start],spslen);
+				  
+				  /*fprintf(stderr,"GOT THE SPS %d \n",buff->length);
+				  for (size_t i = 0; i != spslen; ++i)
+                    fprintf(stderr, "%02x", (unsigned char)sps[i]);
+                    fprintf(stderr,"\n"); 
+				  */
+			  }	
+			    
+	          
+				  
+			  nal_unit_type = buff->data[pps_start] & 0x1f;	
+
+			  if (nal_unit_type == 8 && !pps)  { //PPS  
+				  pps=(uint8_t *)av_mallocz(ppslen); 
+				  memcpy(pps,(void*)&buff->data[pps_start],ppslen);
+				   
+				  /*fprintf(stderr,"GOT THE PPS\n");
+				  for (size_t i = 0; i != ppslen; ++i)
+                    fprintf(stderr, "%02x", (unsigned char)pps[i]);
+			        fprintf(stderr,"\n");
+			      */  
+			  }	  
+	       
+	       if ((sps) && (pps)) {
+			  //length of extradata is 6 bytes + 2 bytes for spslen + sps + 1 byte number of pps + 2 bytes for ppslen + pps
+			   
+			  uint32_t extradata_len = 8 + spslen + 1 + 2 + ppslen;
+			  outputStream->codecpar->extradata = (uint8_t*)av_mallocz(extradata_len);
+			  
+              outputStream->codecpar->extradata_size = extradata_len;
+
+              //start writing avcc extradata
+              outputStream->codecpar->extradata[0] = 0x01;      //version
+              outputStream->codecpar->extradata[1] = sps[1];    //profile
+              outputStream->codecpar->extradata[2] = sps[2];    //comatibility
+              outputStream->codecpar->extradata[3] = sps[3];    //level
+              outputStream->codecpar->extradata[4] = 0xFC | 3;  // reserved (6 bits), NALU length size - 1 (2 bits) which is 3
+              outputStream->codecpar->extradata[5] = 0xE0 | 1;  // reserved (3 bits), num of SPS (5 bits) which is 1 sps
+              
+              //write spslen in big endian
+              outputStream->codecpar->extradata[6] = (spslen >> 8) & 0x00ff;
+              outputStream->codecpar->extradata[7] = spslen & 0x00ff;
+              
+              //Write the actual sps
+              int i = 0;
+              for (i=0; i<spslen; i++) {
+                outputStream->codecpar->extradata[8 + i] = sps[i];
+              }
+              
+              /*for (size_t i = 0; i != outputStream->codecpar->extradata_size; ++i)
+                    fprintf(stderr, "\\%02x", (unsigned char)outputStream->codecpar->extradata[i]);
+                    fprintf(stderr,"\n");
+              */
+              
+              //Number of pps
+              outputStream->codecpar->extradata[8 + spslen] = 0x01;
+              
+              
+              /*for (size_t i = 0; i != outputStream->codecpar->extradata_size; ++i)
+                    fprintf(stderr, "\\%02x", (unsigned char)outputStream->codecpar->extradata[i]);
+                    fprintf(stderr,"\n");
+              */
+              
+              //Size of pps in big endian
+              outputStream->codecpar->extradata[8 + spslen + 1] = (ppslen >> 8) & 0x00ff;
+              outputStream->codecpar->extradata[8 + spslen + 2] = ppslen & 0x00ff;
+              for (i=0; i<ppslen; i++) {
+               outputStream->codecpar->extradata[8 + spslen + 1 + 2 + i] = pps[i];
+              }
+              
+              //Print out the full extradata
+              /*for (size_t i = 0; i != outputStream->codecpar->extradata_size; ++i)
+                    fprintf(stderr, "\\%02x", (unsigned char)outputStream->codecpar->extradata[i]);
+                    fprintf(stderr,"\n");
+              */
+              
+              if(avformat_write_header(outputFormatCtx, &fmt_opts) < 0){
+                fprintf(stderr,"Error avformat_write_header");
+                ret = 1;
+              } else {
+                extradata_written=true;
+                fprintf(stderr,"EXTRADATA written\n");
+		      }    
+		   } 
+		      
+		   
+       
+		   
+               
+	       return;
+	    }
+	}  else {//extradata is written already
+	    
+	    
+	    /*fprintf(stderr,"ORIGINAL \n");
+	    for (size_t i = 0; i != buff->length; ++i)
+                    fprintf(stderr, "\\%02x", (unsigned char)buff->data[i]);
+                    fprintf(stderr,"\n");
+	    */
+	    
+	    
+	    opkt.data=(uint8_t*)av_mallocz(buff->length); //opkt.data will hold the 4 byte nal size and the actual bytestream
+	    
+	    //copy the nal size which will be 4 bytes less since the leading 4 bytes will be the nal size
+	    uint32_t nal_size=buff->length-4; //little endian
+	    
+	    //write as big endian on the start of opkt.data
+	    uint32_t b0,b1,b2,b3;
+
+        b0 = (nal_size & 0x000000ff) << 24u;
+        b1 = (nal_size & 0x0000ff00) << 8u;
+        b2 = (nal_size & 0x00ff0000) >> 8u;
+        b3 = (nal_size & 0xff000000) >> 24u;
+        
+        uint32_t res = b0 | b1 | b2 | b3;
+        memcpy(opkt.data,&res,4);
+        
+        //Write the actual h264 data after the nal size
+        memcpy(opkt.data+4,buff->data+4,buff->length-4);
+        opkt.size=buff->length;
+        
+        
+        /*
+	    fprintf(stderr,"MODIFIED \n");
+	    for (size_t i = 0; i != opkt.size; ++i)
+                    fprintf(stderr, "\\%02x", (unsigned char)opkt.data[i]);
+                    fprintf(stderr,"\n");
+        */ 
+        
+
+	    AVRational time_base = outputStream->time_base;
+        opkt.pts = opkt.dts = timeStampValue;
+        opkt.pts = av_rescale_q(opkt.pts, AVRational{1,30}, time_base);
+        opkt.dts = av_rescale_q(opkt.dts, AVRational{1,30}, time_base);
+        opkt.duration = av_rescale_q(1, AVRational{1,30}, time_base);
+        ret = av_write_frame(outputFormatCtx, &opkt);
+        if(ret < 0)
+        	fprintf(stderr, "Error writing frame\n");
+        else
+            fprintf(stderr, "FFMPEG Successful WRITE \n ");
+            
+    }        
+}	
+
+void ffmpeg_camera::Close_MP4(){
+	ret = av_write_trailer(outputFormatCtx);
+    if(ret < 0 )
+    	fprintf(stderr,"Error writing trailer");
+}	
+
 //This requires swscale conversion to RGB first
 void ffmpeg_camera::Save_PPM(AVFrame *pFrame, int iFrame)
  {
@@ -169,8 +464,8 @@ void ffmpeg_camera::Save_PPM(AVFrame *pFrame, int iFrame)
 		  pFrameRGB->data, pFrameRGB->linesize);
 
      // Open file
-     sprintf(szFilename, "frame%d.ppm", iFrame);
-     //sprintf(szFilename, "frame.ppm", iFrame); //FIXME, just need one frame 
+     //sprintf(szFilename, "frame%d.ppm", iFrame);
+     sprintf(szFilename, "frame.ppm", iFrame); //FIXME, just need one frame for testing
      pFile=fopen(szFilename, "wb");
      if(pFile==NULL)
          return;
@@ -188,7 +483,9 @@ void ffmpeg_camera::Save_PPM(AVFrame *pFrame, int iFrame)
      fclose(pFile);
  }
 
-void ffmpeg_camera::Save_JPEG(AVFrame *pFrame, int FrameNo) {
+
+
+uint8_t ffmpeg_camera::Save_JPEG(AVFrame *pFrame, int FrameNo) {
     
     FILE *JPEGFile;
     char JPEGFName[256];
@@ -221,14 +518,14 @@ void ffmpeg_camera::Save_JPEG(AVFrame *pFrame, int FrameNo) {
     }
     	
     //sprintf(JPEGFName, "frame%d.jpg", FrameNo);
-    sprintf(JPEGFName, "frame.jpg", FrameNo);  //just need one 
+    sprintf(JPEGFName, "frame.jpg", FrameNo);  //just need one frame for testing
     JPEGFile = fopen(JPEGFName, "wb");
     fwrite(packet.data, 1, packet.size, JPEGFile);
     fclose(JPEGFile);
 
     av_packet_unref(&packet);
     
-    //return 0;
+    return 0;
 }
 
 ffmpeg_camera::ffmpeg_camera(const uint8_t ctype, const char *src_filename):ctype(ctype), src_filename(src_filename){
@@ -239,6 +536,9 @@ ffmpeg_camera::ffmpeg_camera(const uint8_t ctype, const char *src_filename):ctyp
 ffmpeg_camera::~ffmpeg_camera(){
 	fprintf(stderr, "Destructing camera\n");
 	/* flush cached frames */
+	
+	av_packet_unref(&pkt);
+	av_packet_unref(&opkt);
     
     avformat_network_deinit();
     if (dec_ctx)
@@ -261,6 +561,10 @@ ffmpeg_camera::~ffmpeg_camera(){
     //FIXME, only used for JPEG writing
     if (jpegContext)
     avcodec_free_context(&jpegContext);  
+    if (sps)
+       free(sps);
+    if (pps)
+       free(pps);
       
 };
 
@@ -302,6 +606,24 @@ AVFrame * ffmpeg_camera::run(){
             
         }//got a frame here
         return frame;    
+        
+    }
+    return NULL;
+};
+
+AVPacket * ffmpeg_camera::get(){
+	while (av_read_frame(fmt_ctx, &pkt) >= 0) {
+        if (pkt.stream_index == video_stream_idx) //{
+         return &pkt;
+            /*int ret = decode_packet(&pkt);
+            if (ret < 0 )
+                continue;
+            else
+               fprintf(stderr, "FFMPEG Successful decode --> ");
+            */
+             
+        //}//got a frame here
+        //return frame;    
         
     }
     return NULL;
