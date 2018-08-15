@@ -11,11 +11,14 @@
     //order matters, I think: 
     //1. set_video_input_port
     //2. set_video_output_port
+    
     //3. <optional> set_input_flag, set_output_flag
-    //4. enable_video_input_port
-    //5. enable_video_output_port
-    //6. create_input_pool
-    //7. create_output_pool
+
+    //4. create_input_pool
+    //5. create_output_pool
+
+    //6. enable_video_input_port
+    //7. enable_video_output_port
     //8. enable
     
     
@@ -29,11 +32,11 @@
     
     encoder.set_output_flag(MMAL_PARAMETER_VIDEO_ENCODE_INLINE_VECTORS);
     
-    encoder.enable_video_input_port();
-    encoder.enable_video_output_port();
-    
     encoder.create_output_pool();
     encoder.create_input_pool();
+    
+    encoder.enable_video_input_port();
+    encoder.enable_video_output_port();
     
     
     encoder.enable();
@@ -46,12 +49,11 @@
     rgbcoder.set_video_input_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_I420);
     rgbcoder.set_video_output_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_RGB24);
     
-    rgbcoder.enable_video_input_port();
-    rgbcoder.enable_video_output_port();
-    
     rgbcoder.create_output_pool();
     rgbcoder.create_input_pool();
     
+    rgbcoder.enable_video_input_port();
+    rgbcoder.enable_video_output_port();
     
     
     rgbcoder.enable();
@@ -62,11 +64,12 @@
     jcoder.set_video_input_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_I420);
     jcoder.set_video_output_port(camera1.get_width(),camera1.get_height(),MMAL_ENCODING_JPEG);
 
-    jcoder.enable_video_input_port();
-    jcoder.enable_video_output_port();
- 
     jcoder.create_output_pool();
     jcoder.create_input_pool();
+
+    jcoder.enable_video_input_port();
+    jcoder.enable_video_output_port();
+    
 
     jcoder.enable();
     

@@ -84,7 +84,7 @@ void mmal_engine::output_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffe
 
 		
 
-/*uint8_t mmal_engine::set_video_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOURCC_T iformat,extradata_pack **pack){
+uint8_t mmal_engine::set_video_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOURCC_T iformat,extradata_pack **pack){
 	    
    
    MMAL_ES_FORMAT_T *format_in = engine->input[0]->format;
@@ -121,7 +121,7 @@ void mmal_engine::output_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffe
    return status;
 	
 	
-};*/
+};
 
 
 uint8_t mmal_engine::set_video_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOURCC_T iformat){

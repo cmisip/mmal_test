@@ -30,7 +30,7 @@ class mmal_engine{
 public:	
     //uint8_t init(const char **name);
     uint8_t set_video_input_port(uint16_t width, uint16_t height, MMAL_FOURCC_T iformat);
-    //uint8_t set_video_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOURCC_T iformat,extradata_pack **pack);
+    uint8_t set_video_input_port(uint16_t iwidth, uint16_t iheight, MMAL_FOURCC_T iformat,extradata_pack **pack);
     uint8_t set_video_output_port(uint16_t width, uint16_t height, MMAL_FOURCC_T oformat);
     uint8_t set_input_flag(uint32_t name);
     uint8_t set_output_flag(uint32_t name);
